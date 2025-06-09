@@ -3,6 +3,7 @@
 This repository contains scripts to build cross-toolchains for AmigaOS on two targets:
 - **m68k-amigaos**: For AmigaOS <= 3.9 (Motorola 68k-based systems).
 - **ppc-amigaos**: For AmigaOS 4.x (PowerPC-based systems).
+- ./toolchain-ppc build --prefix=/custom/path
 
 The scripts automate downloading, configuring, and building the necessary tools, libraries, and headers to develop software for these platforms.
 
