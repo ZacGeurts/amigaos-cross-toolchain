@@ -13,34 +13,29 @@ The scripts automate downloading, configuring, and building the necessary tools,
 - **GCC 2.95.3**: C compiler.
 - **G++ 2.95.3**: C++ compiler.
 - **libstdc++ 2.10**: C++ standard library.
-- **Binutils 2.14**: Assembler, linker, and other utilities.
-- **libnix 2.2**: Standard ANSI/C library replacement for AmigaOS.
+- **Binutils 2.14**: Assembler, linker, and utilities.
+- **libnix 2.2**: ANSI/C library replacement for AmigaOS.
 - **libm 5.4**: Math library for non-FPU Amigas.
 - **AmigaOS Headers & Libraries**: NDK 3.9 headers, libraries, and autodocs, installed to `{prefix}/m68k-amigaos/ndk`.
-- **vbcc Toolchain**: Latest release, including:
+- **vbcc Toolchain**: Latest release (0.9fP1), including:
   - `vasm`: Assembler.
   - `vlink`: Linker.
   - C standard library.
-- **IRA**: Reassembler for AmigaOS hunk-format executables, libraries, devices, and raw binary files.
+- **IRA**: Reassembler for AmigaOS hunk-format executables, libraries, devices, and binaries.
 - **vda68k**: Disassembler for M68k (68000-68060, 68851, 68881, 68882).
-- **amitools**: Includes `vamos`, an AmigaOS emulator compatible with SAS/C.
+- **amitools**: Includes `vamos`, an AmigaOS emulator compatible with SAS/C (requires separate installation; see Setup Instructions).
 
 ### For `ppc-amigaos`
 - **GCC 4.2.4**: C compiler.
 - **G++ 4.2.4**: C++ compiler.
-- **Binutils 2.18**: Assembler, linker, and other utilities.
+- **Binutils 2.18**: Assembler, linker, and utilities.
 - **newlib**: C standard library.
 - **clib2 2.2**: Alternative C library for AmigaOS.
-- **AmigaOS Headers & Libraries**: SDK 53.24 headers, libraries, and autodocs for AmigaOS 4.1, installed to `{prefix}/ppc-amigaos/SDK`.
-
-## Prerequisites
-
-The build process requires specific tools and libraries. The scripts are designed for Linux (e.g., Ubuntu 24.04) or macOS (with MacPorts or Homebrew). The following packages are required:
-
-### Linux (Ubuntu/Debian)
-Run the following command to install all necessary system packages:
-
-`sudo apt update`
+- **AmigaOS Headers & Libraries**: SDK 53.24 headers, libraries, and autodocs for AmigaOS 4.1,
+- installed to `{prefix}/ppc-amigaos/SDK`.
+## Linux (Ubuntu/Debian)
+Install system packages:<BR />
+`sudo apt update`<BR />
 `sudo apt install -y build-essential gcc g++ flex bison make git subversion curl python3-dev libncurses-dev gperf perl`<BR />
 <BR />
 For 32-bit compatibility on 64-bit systems (required for GCC 5.x 32-bit builds):<BR />
@@ -56,6 +51,7 @@ For 32-bit compatibility on 64-bit systems (required for GCC 5.x 32-bit builds):
 # macOS
 Install Xcode Command Line Tools:<BR />
 `xcode-select --install`<BR />
+<BR />
 Use Homebrew to install dependencies:<BR />
 `brew install gcc g++ flex bison make git subversion curl python3 ncurses gperf perl`<BR />
 <BR />
