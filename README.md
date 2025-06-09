@@ -1,5 +1,5 @@
 ### Down for repairs
-AmigaOS cross compiler for Linux / MacOSX / Windows
+Down for repairs! AmigaOS cross compiler for Linux / MacOSX / Windows
 ===
 
 [![Build Status](https://circleci.com/gh/cahirwpz/amigaos-cross-toolchain.svg?&style=shield)](https://circleci.com/gh/cahirwpz/amigaos-cross-toolchain)
