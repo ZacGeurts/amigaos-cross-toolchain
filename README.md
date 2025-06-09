@@ -1,5 +1,7 @@
 ### Down for repairs
 Down for repairs! AmigaOS cross compiler for Linux / MacOSX / Windows
+
+Go see the actual one at https://github.com/adtools/amigaos-cross-toolchain
 ===
 
 [![Build Status](https://circleci.com/gh/cahirwpz/amigaos-cross-toolchain.svg?&style=shield)](https://circleci.com/gh/cahirwpz/amigaos-cross-toolchain)
