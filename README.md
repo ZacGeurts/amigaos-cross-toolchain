@@ -19,6 +19,8 @@ or<BR />
 `make m68k`<BR />
 before rebuilding `make clean`<BR />
 
+Custom install location (full) path: `make PREFIX=/custom/path`<BR />
+
 ppc-amigaos-gcc -o hello hello.c  # PPC example<BR />
 m68k-amigaos-gcc -o hello hello.c  # M68K example<BR />
 
@@ -58,7 +60,6 @@ Toolchains install to ./install/ppc-amigaos and ./install/m68k-amigaos.<BR />
 <BR />
 
 <BR />
-Custom PREFIX: make PREFIX=/custom/path<BR />
 <BR />
 Transfer binaries to AmigaOS or emulator (e.g., FS-UAE, WinUAE).<BR />
 <BR />
