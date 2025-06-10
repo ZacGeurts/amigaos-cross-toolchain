@@ -4,60 +4,60 @@ Down for repairs! AmigaOS cross compiler for Linux / MacOSX / Windows
 Go see the actual one at https://github.com/adtools/amigaos-cross-toolchain
 ===
 
-Linux (Ubuntu/Debian):
-sudo apt update
-sudo apt install -y gcc g++ make curl patch bison flex subversion git perl gperf tar p7zip-full libncurses-dev
-gcc --version && g++ --version && make --version && curl --version && patch --version && bison --version && flex --version && svn --version && git --version && perl --version && gperf --version && tar --version && 7z
-mkdir amiga-toolchain && cd amiga-toolchain
-make
-make ppc
-make m68k
-make clean  # Add to Makefile: clean: @$(RM) $(STAMPS) $(ARCHIVES) $(BUILD) $(TMPDIR) $(SUBMODULES)/.stamp
-export PATH=$PWD/install/ppc-amigaos/bin:$PATH  # For PPC
-export PATH=$PWD/install/m68k-amigaos/bin:$PATH  # For M68K
-ppc-amigaos-gcc -o hello hello.c  # PPC example
-m68k-amigaos-gcc -o hello hello.c  # M68K example
-Windows (MSYS2):
-Download MSYS2 from msys2.org
-msys2_shell.cmd -mingw64
-pacman -Syu
-pacman -S --needed mingw-w64-x86_64-gcc mingw-w64-x86_64-g++ make curl patch mingw-w64-x86_64-bison mingw-w64-x86_64-flex mingw-w64-x86_64-subversion mingw-w64-x86_64-git perl mingw-w64-x86_64-gperf tar mingw-w64-x86_64-p7zip mingw-w64-x86_64-ncurses
-gcc --version && g++ --version && make --version && curl --version && patch --version && bison --version && flex --version && svn --version && git --version && perl --version && gperf --version && tar --version && 7z
-mkdir amiga-toolchain && cd amiga-toolchain
-make
-make ppc
-make m68k
-make clean  # Add to Makefile as above
-export PATH=$PWD/install/ppc-amigaos/bin:$PATH  # For PPC
-export PATH=$PWD/install/m68k-amigaos/bin:$PATH  # For M68K
-ppc-amigaos-gcc -o hello hello.c  # PPC example
-m68k-amigaos-gcc -o hello hello.c  # M68K example
-macOS:
-Install Homebrew: /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-brew install gcc g++ make curl patch bison flex subversion git perl gperf p7zip ncurses
-gcc --version && g++ --version && make --version && curl --version && patch --version && bison --version && flex --version && svn --version && git --version && perl --version && gperf --version && tar --version && 7z
-mkdir amiga-toolchain && cd amiga-toolchain
-make
-make ppc
-make m68k
-make clean  # Add to Makefile as above
-export PATH=$PWD/install/ppc-amigaos/bin:$PATH  # For PPC
-export PATH=$PWD/install/m68k-amigaos/bin:$PATH  # For M68K
-ppc-amigaos-gcc -o hello hello.c  # PPC example
-m68k-amigaos-gcc -o hello hello.c  # M68K example
-Notes:
-Save Makefile in working directory.
-
-Toolchains install to ./install/ppc-amigaos and ./install/m68k-amigaos.
-
-Use make -j$(nproc) (Linux) or make -j$(sysctl -n hw.ncpu) (macOS) for faster builds.
-
-Custom PREFIX: make PREFIX=/custom/path
-
-Transfer binaries to AmigaOS or emulator (e.g., FS-UAE, WinUAE).
-
-If gcc is clang on macOS, use CC=gcc-14 CXX=g++-14 in Makefile.
-
+## Linux (Ubuntu/Debian):<BR />
+sudo apt update<BR />
+sudo apt install -y gcc g++ make curl patch bison flex subversion git perl gperf tar p7zip-full libncurses-dev<BR />
+gcc --version && g++ --version && make --version && curl --version && patch --version && bison --version && flex --version && svn --version && git --version && perl --version && gperf --version && tar --version && 7z<BR />
+mkdir amiga-toolchain && cd amiga-toolchain<BR />
+make<BR />
+make ppc<BR />
+make m68k<BR />
+make clean  # Add to Makefile: clean: @$(RM) $(STAMPS) $(ARCHIVES) $(BUILD) $(TMPDIR) $(SUBMODULES)/.stamp<BR />
+export PATH=$PWD/install/ppc-amigaos/bin:$PATH  # For PPC<BR />
+export PATH=$PWD/install/m68k-amigaos/bin:$PATH  # For M68K<BR />
+ppc-amigaos-gcc -o hello hello.c  # PPC example<BR />
+m68k-amigaos-gcc -o hello hello.c  # M68K example<BR />
+## Windows (MSYS2):<BR />
+Download MSYS2 from msys2.org<BR />
+msys2_shell.cmd -mingw64<BR />
+pacman -Syu<BR />
+pacman -S --needed mingw-w64-x86_64-gcc mingw-w64-x86_64-g++ make curl patch mingw-w64-x86_64-bison mingw-w64-x86_64-flex mingw-w64-x86_64-subversion mingw-w64-x86_64-git perl mingw-w64-x86_64-gperf tar mingw-w64-x86_64-p7zip mingw-w64-x86_64-ncurses<BR />
+gcc --version && g++ --version && make --version && curl --version && patch --version && bison --version && flex --version && svn --version && git --version && perl --version && gperf --version && tar --version && 7z<BR />
+mkdir amiga-toolchain && cd amiga-toolchain<BR />
+make<BR />
+make ppc<BR />
+make m68k<BR />
+make clean  # Add to Makefile as above<BR />
+export PATH=$PWD/install/ppc-amigaos/bin:$PATH  # For PPC<BR />
+export PATH=$PWD/install/m68k-amigaos/bin:$PATH  # For M68K<BR />
+ppc-amigaos-gcc -o hello hello.c  # PPC example<BR />
+m68k-amigaos-gcc -o hello hello.c  # M68K example<BR />
+## macOS:<BR />
+Install Homebrew: /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"<BR />
+brew install gcc g++ make curl patch bison flex subversion git perl gperf p7zip ncurses<BR />
+gcc --version && g++ --version && make --version && curl --version && patch --version && bison --version && flex --version && svn --version && git --version && perl --version && gperf --version && tar --version && 7z<BR />
+mkdir amiga-toolchain && cd amiga-toolchain<BR />
+make<BR />
+make ppc<BR />
+make m68k<BR />
+make clean  # Add to Makefile as above<BR />
+export PATH=$PWD/install/ppc-amigaos/bin:$PATH  # For PPC<BR />
+export PATH=$PWD/install/m68k-amigaos/bin:$PATH  # For M68K<BR />
+ppc-amigaos-gcc -o hello hello.c  # PPC example<BR />
+m68k-amigaos-gcc -o hello hello.c  # M68K example<BR />
+Notes:<BR />
+Save Makefile in working directory.<BR />
+<BR />
+Toolchains install to ./install/ppc-amigaos and ./install/m68k-amigaos.<BR />
+<BR />
+Use make -j$(nproc) (Linux) or make -j$(sysctl -n hw.ncpu) (macOS) for faster builds.<BR />
+<BR />
+Custom PREFIX: make PREFIX=/custom/path<BR />
+<BR />
+Transfer binaries to AmigaOS or emulator (e.g., FS-UAE, WinUAE).<BR />
+<BR />
+If gcc is clang on macOS, use CC=gcc-14 CXX=g++-14 in Makefile.<BR />
+<BR />
 ---------------------------------------------------------------
 
 [![Build Status](https://circleci.com/gh/cahirwpz/amigaos-cross-toolchain.svg?&style=shield)](https://circleci.com/gh/cahirwpz/amigaos-cross-toolchain)
