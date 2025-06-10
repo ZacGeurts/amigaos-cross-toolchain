@@ -5,13 +5,15 @@ Go see the actual one at https://github.com/adtools/amigaos-cross-toolchain
 ===
 
 What are we? Makefile. What else? The rest is the original.<BR />
+We are downloading common build tools and building our own tools from those.<BR />
 These instructions I added are untested other than Linux.<BR />
 If you have problems then #1 is check your url downloads.<BR />
+Try `make help`<BR />
 Does the file still exist there? We scan for updated files for some tools.<BR />
-You can place expected files in the downloads folder.<BR />
+You can place expected files in the downloads folder manually.<BR />
 Github expects a folder, some expect tar.gz, .lha, etc. for sources.<BR />
 
-# Supports Amiga
+# Supports AmigaOS
 M68K: versions 1.0 through 3.9<BR />
 PowerPC: versions 4.0 through 4.1<BR />
 <BR />
@@ -22,12 +24,14 @@ If you have issues, verify the download links in the makefile.<BR />
 `sudo apt update`<BR />
 `sudo apt install -y gcc g++ make curl patch bison flex subversion git perl gperf tar p7zip-full libncurses-dev help2man gettext autopoint git-merge-changelog`<BR />
 <BR />
+`make help` to verify urls.<BR />
 `make all`<BR />
-or<BR />
-`make ppc`<BR />
-`make m68k`<BR />
+or `make` to build both (standard is to pick your tool)<BR />
+`make ppc` for AmigaOS 4.x+.<BR />
+`make m68k` for AmigaOS 3.9 and below.<BR />
 before rebuilding `make clean`<BR />
 Remove existing downloads before rebuilding (not recommended) `make clean-downloads`<BR />
+If you spam downloads you will get removed from server accesses in some places.<BR />
 
 Custom install location (full) path: `make PREFIX=/custom/path`<BR />
 
