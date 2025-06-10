@@ -1,9 +1,5 @@
-# Makefile for building AmigaOS 4.x PowerPC and AmigaOS <= 3.9 M68k cross-toolchains.
-# Builds dependencies from source, supports Windows (MSYS2/WSL2), Linux, and macOS.
-
-# Default variables
 TOP := $(shell pwd)
-PREFIX ?= $(TOP)/install
+PREFIX ?= /usr/local
 HOST := $(TOP)/.build/host
 SOURCES := $(TOP)/.build/sources
 ARCHIVES := $(TOP)/.build/archives
@@ -12,7 +8,6 @@ BUILD := $(TOP)/.build/build
 TMPDIR := $(TOP)/.build/tmp
 SUBMODULES := $(TOP)/submodules
 
-# PowerPC-specific variables
 PPC_PREFIX := $(PREFIX)/ppc-amigaos
 PPC_TARGET := ppc-amigaos
 PPC_STAMPS := $(STAMPS)/ppc
@@ -20,7 +15,6 @@ PPC_BUILD := $(BUILD)/ppc
 PPC_ARCHIVES := $(ARCHIVES)/ppc
 PPC_SDK := SDK_54.16
 
-# M68k-specific variables
 M68K_PREFIX := $(PREFIX)/m68k-amigaos
 M68K_TARGET := m68k-amigaos
 M68K_STAMPS := $(STAMPS)/m68k
@@ -33,18 +27,18 @@ M68K_VASM := vasm1_9c
 M68K_VLINK := vlink0_17b
 M68K_VCLIB := vbcc_target_m68k-amigaos
 
-# URLs for dependencies (Git repositories for building, downloads for Amiga-specific files)
 PPC_URLS := \
-	https://gmplib.org/repo/gmp/=gmp \
+	https://github.com/alisw/GMP.git=gmp \
 	https://gitlab.inria.fr/mpc/mpc.git=mpc \
 	https://github.com/BrianGladman/mpfr.git=mpfr \
-	https://git.savannah.gnu.org/git/texinfo.git=texinfo \
+	https://github.com/trueroad/texinfo.git=texinfo \
 	https://github.com/Meinersbur/isl.git=isl \
 	https://github.com/periscop/cloog.git=cloog \
-	https://git.savannah.gnu.org/git/automake.git=automake \
+	https://github.com/autotools-mirror/automake.git=automake \
+	https://git.savannah.gnu.org/git/libtool.git=libtool \
 	http://os4depot.net/?function=showfile\&file=development/library/misc/sdk.lha=$(PPC_SDK).lha \
-	https://github.com/adtools/binutils.git=binutils \
-	https://github.com/adtools/gcc.git=gcc
+	https://github.com/adtools/amigaos-binutils-2.14.git=binutils \
+	https://github.com/adtools/amigaos-gcc-2.95.3.git=gcc
 
 M68K_URLS := \
 	https://git.savannah.gnu.org/git/m4.git=m4 \
@@ -63,7 +57,6 @@ M68K_URLS := \
 	http://sun.hasenbraten.de/~frank/projects/download/vdam68k.tar.gz=vdam68k.tar.gz \
 	http://phoenix.owl.de/vbcc/current/$(M68K_VCLIB).lha=$(M68K_VCLIB).lha
 
-# Common tools (use system-installed versions)
 CC := gcc
 CXX := g++
 MAKE := make
@@ -83,7 +76,6 @@ RM := rm
 CHMOD := chmod
 TOUCH := touch
 
-# Archive tools (7z prioritized, lhasa as fallback on Linux, 7z elsewhere)
 OS := $(shell uname -s)
 ifeq ($(OS),Linux)
 	SEVENZ := 7z
@@ -93,12 +85,10 @@ else
 	ARCHIVE_TOOL := 7z
 endif
 
-# Common flags
 CFLAGS := -g -O2
 CXXFLAGS := -g -O2
 MAKEFLAGS := $(if $(filter no, $(QUIET)),,--silent)
 
-# Cross-platform adjustments
 ifeq ($(OS),Windows_NT)
 	SHELL := cmd.exe
 	MKDIR := mkdir
@@ -117,15 +107,12 @@ else
 	PATHSEP := /
 endif
 
-# Default target
 .PHONY: all
 all: ppc m68k
 
-# Directory creation
 $(STAMPS) $(PPC_STAMPS) $(M68K_STAMPS) $(SOURCES) $(ARCHIVES) $(PPC_ARCHIVES) $(M68K_ARCHIVES) $(BUILD) $(PPC_BUILD) $(M68K_BUILD) $(TMPDIR) $(PREFIX) $(PPC_PREFIX) $(M68K_PREFIX):
 	@$(MKDIR) $@
 
-# Check required tools
 CHECK_TOOLS := $(CC) $(CXX) $(CURL) $(PATCH) $(BISON) $(FLEX) $(MAKE) $(SVN) $(GIT) $(PERL) $(GPERF) $(YACC) $(TAR)
 check_tools: $(CHECK_TOOLS)
 $(CHECK_TOOLS):
@@ -133,69 +120,63 @@ $(CHECK_TOOLS):
 check_archive_tool:
 	@command -v $(ARCHIVE_TOOL) >/dev/null 2>&1 || { echo "Error: $(ARCHIVE_TOOL) not found. Install 'p7zip' (all platforms) or 'lhasa' (Linux fallback)."; exit 1; }
 
-# Check headers
 $(TMPDIR)/check_ncurses.h: | $(TMPDIR)
 	@echo "#include <ncurses.h>" > $@
 	@echo "int main() { return 0; }" >> $@
 check_headers: check_tools check_archive_tool $(TMPDIR)/check_ncurses.h
-	@$(CC) $(TMPDIR)/check_ncurses.h -o /dev/null || { echo "Error: Missing ncurses development headers"; exit 1; }
+	@$(CC) $(TMPDIR)/check_ncurses.h -o /dev/null || { echo "ERROR: Missing ncurses development headers"; exit 1; }
 
-# Submodule update
 $(SUBMODULES)/.stamp: | $(SUBMODULES)
 	@$(GIT) submodule sync
-	@$(GIT) submodule update --init --force || { echo "Warning: Submodule update failed, attempting manual clone..."; \
+	@$(GIT) submodule update --init --force || { echo "WARNING: Submodule update failed, attempting manual clone..."; \
 		cd $(SUBMODULES) && \
-		for repo in binutils-2.14 gcc-2.95.3 clib2 libnix fd2sfd sfdc libdebug fd2pragma; do \
-			if [ ! -d $$repo ]; then \
-				case $$repo in \
-					binutils-2.14) $(GIT) clone https://github.com/adtools/amigaos-binutils-2.14 $$repo ;; \
-					gcc-2.95.3) $(GIT) clone https://github.com/cahirwpz/amigaos-gcc-2.95.3 $$repo ;; \
-					clib2) $(GIT) clone https://github.com/adtools/clib2 $$repo ;; \
-					libnix) $(GIT) clone https://github.com/cahirwpz/libnix $$repo ;; \
-					fd2sfd) $(GIT) clone https://github.com/cahirwpz/fd2sfd $$repo ;; \
-					sfdc) $(GIT) clone https://github.com/adtools/sfdc $$repo ;; \
-					libdebug) $(GIT) clone https://github.com/cahirwpz/libdebug $$repo ;; \
-					fd2pragma) $(GIT) clone https://github.com/adtools/fd2pragma $$repo ;; \
+		for pkg in binutils-2.14 gcc-2.95.3 clib2 libnix fd2sfd sfdc libdebug fd2pragma; do \
+			if [ ! -d "$$pkg" ]; then \
+				case $$pkg in \
+					binutils-2.14) $(GIT) clone https://github.com/adtools/amigaos-binutils-2.14 $$pkg ;; \
+					gcc-2.95.3) $(GIT) clone https://github.com/cahirwpz/amigaos-gcc-2.95.3 $$pkg ;; \
+					clib2) $(GIT) clone https://github.com/adtools/clib2 $$pkg ;; \
+					libnix) $(GIT) clone https://github.com/cahirwpz/libnix $$pkg ;; \
+					fd2sfd) $(GIT) clone https://github.com/cahirwpz/fd2sfd $$pkg ;; \
+					sfdc) $(GIT) clone https://github.com/adtools/sfdc $$pkg ;; \
+					libdebug) $(GIT) clone https://github.com/cahirwpz/libdebug $$pkg ;; \
+					fd2pragma) $(GIT) clone https://github.com/adtools/fd2pragma $$pkg ;; \
 				esac; \
 			fi; \
 		done; }
 	@$(TOUCH) $@
 
-# Download dependencies
 define download
 	@$(MKDIR) $(2)
-	@cd $(2) && for url in $(1); do \
-		if echo "$$url" | grep -q '='; then \
-			name="$${url##*=}"; \
-			url="$${url%=*}"; \
+	@cd $(2) && for pkg in $(1); do \
+		if echo "$$pkg" | grep -q '='; then \
+			name="$${pkg##*=}"; pkgurl="$${pkg%=*}"; \
 		else \
-			name="$$(basename "$$url")"; \
-			url="$$url"; \
+			name="$$(basename "$$pkg")"; pkgurl="$$pkg"; \
 		fi; \
 		if [ -n "$$name" ]; then \
-			if echo "$$url" | grep -q '\.git$$'; then \
+			if echo "$$pkgurl" | grep -q '\.git$$'; then \
 				if [ ! -d "$$name" ]; then \
-					echo "Cloning $$url into $(2)/$$name"; \
-					$(GIT) clone "$$url" "$$name" || { echo "Failed to clone $$url"; exit 1; }; \
+					echo "Cloning $$pkgurl into $(2)/$$name"; \
+					$(GIT) clone "$$pkgurl" "$$name" || { echo "ERROR: Failed to clone $$pkgurl"; exit 1; }; \
 				else \
 					echo "$$name already exists in $(2)"; \
 				fi; \
 			else \
 				if [ ! -f "$$name" ]; then \
-					echo "Downloading $$url to $(2)/$$name"; \
-					$(CURL) -L -o "$$name" "$$url" || { echo "Failed to download $$url"; exit 1; }; \
+					echo "Downloading $$pkgurl to $(2)/$$name"; \
+					$(CURL) -L -o "$$name" "$$pkgurl" || { echo "ERROR: Failed to download $$pkgurl"; exit 1; }; \
 				else \
 					echo "$$name already exists in $(2)"; \
 				fi; \
 			fi; \
 		else \
-			echo "Downloading $$url to $(2)/$$(basename "$$url")"; \
-			$(CURL) -L -o "$$(basename "$$url")" "$$url" || { echo "Failed to download $$url"; exit 1; }; \
+			echo "Downloading $$pkgurl to $(2)/$$(basename "$$pkgurl")"; \
+			$(CURL) -L -o "$$(basename "$$pkgurl")" "$$pkgurl" || { echo "ERROR: Failed to download $$pkgurl"; exit 1; }; \
 		fi; \
 	done
 endef
 
-# Unpack archives
 define unpack
 	@cd $(2) && \
 	if [ "$(suffix $(1))" = ".lha" ]; then \
@@ -207,59 +188,132 @@ define unpack
 	elif [ "$(suffix $(1))" = ".gz" ] || [ "$(suffix $(1))" = ".bz2" ]; then \
 		$(TAR) -xf $(1) -C $(2) $(3); \
 	else \
-		echo "Unsupported archive: $(1)"; exit 1; \
+		echo "ERROR: Unsupported archive: $(1)"; exit 1; \
 	fi
 endef
 
-# Update autotools
 define update_autotools
 	@$(RM) $(1)/config.guess $(1)/config.sub
 	@$(CP) $(SOURCES)/automake/lib/config.guess $(1)/config.guess
 	@$(CP) $(SOURCES)/automake/lib/config.sub $(1)/config.sub
 endef
 
-# PowerPC toolchain
+define generate_autogen
+	@if [ ! -f $(1)/autogen.sh ]; then \
+		echo "Generating autogen.sh in $(1)"; \
+		echo "#!/bin/sh" > $(1)/autogen.sh; \
+		echo "set -e" >> $(1)/autogen.sh; \
+		if [ -f $(1)/configure.ac ]; then \
+			echo "libtoolize --force --copy" >> $(1)/autogen.sh; \
+			echo "aclocal -I m4" >> $(1)/autogen.sh; \
+			echo "autoconf" >> $(1)/autogen.sh; \
+			echo "autoheader" >> $(1)/autogen.sh; \
+		fi; \
+		if [ -f $(1)/Makefile.am ]; then \
+			echo "automake --add-missing --copy --foreign" >> $(1)/autogen.sh; \
+		fi; \
+		$(CHMOD) +x $(1)/autogen.sh; \
+	else \
+		echo "autogen.sh already exists in $(1)"; \
+	fi
+endef
+
+$(SOURCES)/automake: $(PPC_ARCHIVES)/.downloaded | $(SOURCES)
+	@$(MKDIR) $(SOURCES)/automake
+	@$(CP) -r $(PPC_ARCHIVES)/automake/* $(SOURCES)/automake/
+	@$(TOUCH) $@
+
 ppc: $(PPC_STAMPS)/toolchain | check_headers $(SUBMODULES)/.stamp
 
 $(PPC_ARCHIVES)/.downloaded: | $(PPC_ARCHIVES)
 	$(call download,$(PPC_URLS),$(PPC_ARCHIVES))
 	@$(TOUCH) $@
 
-$(PPC_STAMPS)/automake: $(PPC_ARCHIVES)/.downloaded | $(PPC_STAMPS) $(SOURCES)
-	@cd $(PPC_ARCHIVES)/automake && ./bootstrap && ./configure --prefix=$(HOST) && $(MAKE) && $(MAKE) install
+$(PPC_STAMPS)/m4: $(PPC_ARCHIVES)/.downloaded | $(PPC_STAMPS)
+	@cd $(PPC_ARCHIVES)/m4 && \
+		if [ ! -f bootstrap ]; then \
+			$(call generate_autogen,$(PPC_ARCHIVES)/m4); \
+			mv autogen.sh bootstrap; \
+		fi && \
+		./bootstrap && ./configure --prefix=$(HOST) && $(MAKE) && $(MAKE) install
+	$(call update_autotools,$(PPC_ARCHIVES)/m4)
+	@$(TOUCH) $@
+
+$(PPC_STAMPS)/autoconf: $(PPC_STAMPS)/m4 | $(PPC_STAMPS)
+	@cd $(PPC_ARCHIVES)/autoconf && \
+		if [ ! -f bootstrap ]; then \
+			$(call generate_autogen,$(PPC_ARCHIVES)/autoconf); \
+			mv autogen.sh bootstrap; \
+		fi && \
+		./bootstrap && ./configure --prefix=$(HOST) && $(MAKE) && $(MAKE) install
+	$(call update_autotools,$(PPC_ARCHIVES)/autoconf)
+	@$(TOUCH) $@
+
+$(PPC_STAMPS)/libtool: $(PPC_STAMPS)/autoconf | $(PPC_STAMPS)
+	@cd $(PPC_ARCHIVES)/libtool && \
+		if [ ! -f bootstrap ]; then \
+			$(call generate_autogen,$(PPC_ARCHIVES)/libtool); \
+			mv autogen.sh bootstrap; \
+		fi && \
+		./bootstrap && ./configure --prefix=$(HOST) && $(MAKE) && $(MAKE) install
+	$(call update_autotools,$(PPC_ARCHIVES)/libtool)
+	@$(TOUCH) $@
+
+$(PPC_STAMPS)/automake: $(PPC_STAMPS)/autoconf | $(PPC_STAMPS) $(SOURCES)/automake
+	@cd $(PPC_ARCHIVES)/automake && \
+		if [ ! -f bootstrap ]; then \
+			$(call generate_autogen,$(PPC_ARCHIVES)/automake); \
+			mv autogen.sh bootstrap; \
+		fi && \
+		./bootstrap && ./configure --prefix=$(HOST) && $(MAKE) && $(MAKE) install
+	@find $(HOST)/share/automake-* -name ylwrap -exec $(CP) {} $(PPC_ARCHIVES)/binutils/ylwrap \;
+	$(call update_autotools,$(PPC_ARCHIVES)/automake)
 	@$(TOUCH) $@
 
 $(PPC_STAMPS)/texinfo: $(PPC_STAMPS)/automake
-	@cd $(PPC_ARCHIVES)/texinfo && ./autogen.sh && ./configure --prefix=$(HOST) && $(MAKE) && $(MAKE) install
+	@cd $(PPC_ARCHIVES)/texinfo && \
+		$(call generate_autogen,$(PPC_ARCHIVES)/texinfo) && \
+		./autogen.sh && ./configure --prefix=$(HOST) && $(MAKE) && $(MAKE) install
+	$(call update_autotools,$(PPC_ARCHIVES)/texinfo)
 	@$(TOUCH) $@
 
-$(PPC_STAMPS)/gmp: $(PPC_STAMPS)/automake
-	@cd $(PPC_ARCHIVES)/gmp && ./configure --prefix=$(HOST) && $(MAKE) && $(MAKE) install
+$(PPC_STAMPS)/gmp: $(PPC_STAMPS)/libtool
+	@cd $(PPC_ARCHIVES)/gmp && \
+		$(call generate_autogen,$(PPC_ARCHIVES)/gmp) && \
+		./autogen.sh && ./configure --prefix=$(HOST) && $(MAKE) && $(MAKE) install
 	$(call update_autotools,$(PPC_ARCHIVES)/gmp)
 	@$(TOUCH) $@
 
 $(PPC_STAMPS)/mpfr: $(PPC_STAMPS)/gmp
-	@cd $(PPC_ARCHIVES)/mpfr && ./autogen.sh && ./configure --prefix=$(HOST) --with-gmp=$(HOST) && $(MAKE) && $(MAKE) install
+	@cd $(PPC_ARCHIVES)/mpfr && \
+		$(call generate_autogen,$(PPC_ARCHIVES)/mpfr) && \
+		./autogen.sh && ./configure --prefix=$(HOST) --with-gmp=$(HOST) && $(MAKE) && $(MAKE) install
 	$(call update_autotools,$(PPC_ARCHIVES)/mpfr)
 	@$(TOUCH) $@
 
 $(PPC_STAMPS)/mpc: $(PPC_STAMPS)/mpfr
-	@cd $(PPC_ARCHIVES)/mpc && ./autogen.sh && ./configure --prefix=$(HOST) --with-gmp=$(HOST) --with-mpfr=$(HOST) && $(MAKE) && $(MAKE) install
+	@cd $(PPC_ARCHIVES)/mpc && \
+		$(call generate_autogen,$(PPC_ARCHIVES)/mpc) && \
+		./autogen.sh && ./configure --prefix=$(HOST) --with-gmp=$(HOST) --with-mpfr=$(HOST) && $(MAKE) && $(MAKE) install
 	$(call update_autotools,$(PPC_ARCHIVES)/mpc)
 	@$(TOUCH) $@
 
 $(PPC_STAMPS)/isl: $(PPC_STAMPS)/gmp
-	@cd $(PPC_ARCHIVES)/isl && ./autogen.sh && ./configure --prefix=$(HOST) --with-gmp-prefix=$(HOST) && $(MAKE) && $(MAKE) install
+	@cd $(PPC_ARCHIVES)/isl && \
+		$(call generate_autogen,$(PPC_ARCHIVES)/isl) && \
+		./autogen.sh && ./configure --prefix=$(HOST) --with-gmp-prefix=$(HOST) && $(MAKE) && $(MAKE) install
 	$(call update_autotools,$(PPC_ARCHIVES)/isl)
 	@$(TOUCH) $@
 
 $(PPC_STAMPS)/cloog: $(PPC_STAMPS)/isl
-	@cd $(PPC_ARCHIVES)/cloog && ./configure --prefix=$(HOST) --with-isl=system --with-gmp-prefix=$(HOST) && $(MAKE) && $(MAKE) install
+	@cd $(PPC_ARCHIVES)/cloog && \
+		$(call generate_autogen,$(PPC_ARCHIVES)/cloog) && \
+		./autogen.sh && ./configure --prefix=$(HOST) --with-isl=system --with-gmp-prefix=$(HOST) && $(MAKE) && $(MAKE) install
 	$(call update_autotools,$(PPC_ARCHIVES)/cloog)
 	@$(TOUCH) $@
 
 $(PPC_STAMPS)/binutils: $(PPC_STAMPS)/automake
-	@cd $(PPC_ARCHIVES)/binutils && ./configure --prefix=$(PPC_PREFIX) --target=$(PPC_TARGET) && $(MAKE) && $(MAKE) install
+	@cd $(PPC_ARCHIVES)/binutils && ./configure --prefix=$(PPC_PREFIX) --target=$(PPC_TARGET) && $(MAKE) YACC=bison && $(MAKE) install
 	@$(TOUCH) $@
 
 $(PPC_STAMPS)/gcc: $(PPC_STAMPS)/binutils $(PPC_STAMPS)/mpc $(PPC_STAMPS)/cloog
@@ -281,45 +335,74 @@ $(PPC_STAMPS)/sdk: $(PPC_STAMPS)/gcc
 $(PPC_STAMPS)/toolchain: $(PPC_STAMPS)/sdk
 	@$(TOUCH) $@
 
-# M68k toolchain
 m68k: $(M68K_STAMPS)/toolchain | check_headers $(SUBMODULES)/.stamp
 
 $(M68K_ARCHIVES)/.downloaded: | $(M68K_ARCHIVES)
 	$(call download,$(M68K_URLS),$(M68K_ARCHIVES))
 	@$(TOUCH) $@
 
-$(M68K_STAMPS)/automake: $(M68K_ARCHIVES)/.downloaded
-	@cd $(M68K_ARCHIVES)/automake && ./bootstrap && ./configure --prefix=$(HOST) && $(MAKE) && $(MAKE) install
+$(M68K_STAMPS)/automake: $(M68K_STAMPS)/autoconf $(SOURCES)/automake | $(M68K_STAMPS)
+	@cd $(M68K_ARCHIVES)/automake && \
+		if [ ! -f bootstrap ]; then \
+			$(call generate_autogen,$(M68K_ARCHIVES)/automake); \
+			mv autogen.sh bootstrap; \
+		fi && \
+		./bootstrap && ./configure --prefix=$(HOST) && $(MAKE) && $(MAKE) install
+	$(call update_autotools,$(M68K_ARCHIVES)/automake)
 	@$(TOUCH) $@
 
-$(M68K_STAMPS)/m4: $(M68K_STAMPS)/automake
-	@cd $(M68K_ARCHIVES)/m4 && ./bootstrap && ./configure --prefix=$(HOST) && $(MAKE) && $(MAKE) install
+$(M68K_STAMPS)/m4: $(M68K_ARCHIVES)/.downloaded | $(M68K_STAMPS)
+	@cd $(M68K_ARCHIVES)/m4 && \
+		if [ ! -f bootstrap ]; then \
+			$(call generate_autogen,$(M68K_ARCHIVES)/m4); \
+			mv autogen.sh bootstrap; \
+		fi && \
+		./bootstrap && ./configure --prefix=$(HOST) && $(MAKE) && $(MAKE) install
 	$(call update_autotools,$(M68K_ARCHIVES)/m4)
 	@$(TOUCH) $@
 
+$(M68K_STAMPS)/autoconf: $(M68K_STAMPS)/m4 | $(M68K_STAMPS)
+	@cd $(M68K_ARCHIVES)/autoconf && \
+		if [ ! -f bootstrap ]; then \
+			$(call generate_autogen,$(M68K_ARCHIVES)/autoconf); \
+			mv autogen.sh bootstrap; \
+		&& \
+		if [ ! -f bootstrap ]; then ./bootstrap.sh; else ./bootstrap; fi && \
+		./configure --prefix=$(HOST) && $(MAKE) && $(MAKE) install
+	$(call update_autotools,$(M68K_ARCHIVES)/autoconf)
+	@$(TOUCH) $@
+
 $(M68K_STAMPS)/gawk: $(M68K_STAMPS)/m4
-	@cd $(M68K_ARCHIVES)/gawk && ./bootstrap.sh && ./configure --prefix=$(HOST) && $(MAKE) && $(MAKE) install
-	$(call update_autotools,$(M68K_ARCHIVES)/gawk)
+	@cd $(M68K_ARCHIVES)/gawk && \
+		if [ ! -f bootstrap.sh ]; then \
+			$(call generate_autogen,($M68K_ARCHIVES)/gawk); \
+		else \
+			@cd ./bootstrap.sh && ./configure --prefix=$(HOST) && $(MAKE) && $(MAKE) install
+	$(call update_autotools,$($M68K_ARCHIVES)/gawk)
 	@$(TOUCH) $@
 
 $(M68K_STAMPS)/flex: $(M68K_STAMPS)/m4
-	@cd $(M68K_ARCHIVES)/flex && ./autogen.sh && ./configure --prefix=$(HOST) && $(MAKE) && $(MAKE) install
-	$(call update_autotools,$(M68K_ARCHIVES)/flex)
+	@cd $(M68K_ARCHIVES)/flex && \
+	$(call generate_autogen,$(M68K_ARCHIVES)/flex) && \
+		./autogen.sh && ./configure --prefix=$(HOST) && $(MAKE) && $(MAKE) install
+	$(call update_autotools,($M68K_ARCHIVES)/flex)
 	@$(TOUCH) $@
 
 $(M68K_STAMPS)/bison: $(M68K_STAMPS)/m4
-	@cd $(M68K_ARCHIVES)/bison && ./bootstrap && ./configure --prefix=$(HOST) && $(MAKE) && $(MAKE) install
-	$(call update_autotools,$(M68K_ARCHIVES)/bison)
+	@cd $(M68K_ARCHIVES)/bison && \
+		if [ ! -f bootstrap ]; then \
+			$(call generate_autogen,($M68K_ARCHIVES)/bison); \
+			mv autogen.sh bootstrap; \
+		else \
+		./bootstrap && ./configure --prefix=$(HOST) && $(MAKE) && $(MAKE) install
+	$(call update_autotools,$($M68K_ARCHIVES)/bison)
 	@$(TOUCH) $@
 
 $(M68K_STAMPS)/texinfo: $(M68K_STAMPS)/automake
-	@cd $(M68K_ARCHIVES)/texinfo && ./autogen.sh && ./configure --prefix=$(HOST) && $(MAKE) && $(MAKE) install
-	$(call update_autotools,$(M68K_ARCHIVES)/texinfo)
-	@$(TOUCH) $@
-
-$(M68K_STAMPS)/autoconf: $(M68K_STAMPS)/m4
-	@cd $(M68K_ARCHIVES)/autoconf && ./bootstrap && ./configure --prefix=$(HOST) && $(MAKE) && $(MAKE) install
-	$(call update_autotools,$(M68K_ARCHIVES)/autoconf)
+	@cd $(M68K_ARCHIVES)/texinfo && \
+		$(call generate_autogen,($M68K_ARCHIVES)/texinfo) && \
+		./autogen.sh && ./configure --prefix=$(HOST) && $(MAKE) && $(MAKE) install
+	$(call update_autotools,$($M68K_ARCHIVES)/texinfo)
 	@$(TOUCH) $@
 
 $(M68K_STAMPS)/target: $(M68K_STAMPS)/automake
@@ -356,9 +439,9 @@ $(M68K_STAMPS)/vbcc-install: $(M68K_STAMPS)/vasm $(M68K_STAMPS)/vlink $(M68K_STA
 	@$(CP) $(M68K_BUILD)/vbcc/bin/vbccm68k $(M68K_PREFIX)/$(M68K_TARGET)/bin/
 	@$(CP) $(M68K_BUILD)/vbcc/bin/vc $(M68K_PREFIX)/bin/
 	@$(CP) $(M68K_BUILD)/vbcc/bin/vprof $(M68K_PREFIX)/bin/
-	@$(CP) $(M68K_BUILD)/$(M68K_VCLIB)/include/* $(M68K_PREFIX)/$(M68K_TARGET)/vbcc/include
-	@$(CP) $(M68K_BUILD)/$(M68K_VCLIB)/lib/* $(M68K_PREFIX)/$(M68K_TARGET)/vbcc/lib
-	@echo -e "-cc=$(M68K_PREFIX)/$(M68K_TARGET)/bin/vbccm68k -hunkdebug %s -o= %s %s -O=%ld -quiet -I$(M68K_PREFIX)/$(M68K_TARGET)/vbcc/include -I$(M68K_PREFIX)/$(M68K_TARGET)/ndk/include -I$(M68K_PREFIX)/$(M68K_TARGET)/include\n-ccv=$(M68K_PREFIX)/$(M68K_TARGET)/bin/vbccm68k -hunkdebug %s -o= %s %s -O=%ld -I$(M68K_PREFIX)/$(M68K_TARGET)/vbcc/include -I$(M68K_PREFIX)/$(M68K_TARGET)/ndk/include -I$(M68K_PREFIX)/$(M68K_TARGET)/include\n-as=$(M68K_PREFIX)/$(M68K_TARGET)/bin/vasmm68k_mot -Fhunk -phxass -opt-fconst -nowarn=62 -quiet -I$(M68K_PREFIX)/$(M68K_TARGET)/ndk/include -I$(M68K_PREFIX)/$(M68K_TARGET)/include %s -o %s\n-asv=$(M68K_PREFIX)/$(M68K_TARGET)/bin/vasmm68k_mot -Fhunk -phxass -opt-fconst -nowarn=62 -I$(M68K_PREFIX)/$(M68K_TARGET)/ndk/include -I$(M68K_PREFIX)/$(M68K_TARGET)/include %s -o %s\n-rm=rm %s\n-rmv=rm -v %s\n-ld=$(M68K_PREFIX)/bin/vlink -bamigahunk -x -Bstatic -Cvbcc -nostdlib $(M68K_PREFIX)/$(M68K_TARGET)/vbcc/lib/startup.o %s %s -L$(M68K_PREFIX)/$(M68K_TARGET)/vbcc/lib -lvc -o %s\n-l2=$(M68K_PREFIX)/bin/vlink -bamigahunk -x -Bstatic -Cvbcc -nostdlib %s %s -L$(M68K_PREFIX)/$(M68K_TARGET)/vbcc/lib -L$(M68K_PREFIX)/$(M68K_TARGET)/vbcc/include -o %s\n-ldv=$(M68K_PREFIX)/bin/vlink -bamigahunk -t -x -Bstatic -Cvbcc -nostdlib $(M68K_PREFIX)/$(M68K_TARGET)/vbcc/lib/startup.o %s %s -L$(M68K_PREFIX)/$(M68K_TARGET)/vbcc/lib -lvc -o %s\n-l2v=$(M68K_PREFIX)/bin/vlink -bamigahunk -t -x -Bstatic -Cvbcc -nostdlib %s %s -L$(M68K_PREFIX)/$(M68K_TARGET)/vbcc/lib -o %s\n-ldnodb=-s -Rshort\n-ul=-l%s\n-cf=-F%s\n-ml=500" > $(M68K_PREFIX)/etc/vc.config
+	@$(CP) $(M68K_BUILD)/$(M68K_VCLIB)/include/* $(M68K_PREFIX)/$(M68K_TARGET)/vbcc/include/
+	@$(CP) $(M68K_BUILD)/$(M68K_VCLIB)/lib/* $(M68K_PREFIX)/$(M68K_TARGET)/vbcc/lib/
+	@echo -e "-cc=$(M68K_PREFIX)/$(M68K_TARGET)/bin/vbccm68k -hunkdebug %s -o= %s %s -O=%ld -quiet -I$(M68K_PREFIX)/$(M68K_TARGET)/vbcc/include -I$(M68K_PREFIX)/$(M68K_TARGET)/ndk/include -I$(M68K_PREFIX)/$(M68K_TARGET)/include\n-ccv=$(M68K_PREFIX)/$(M68K_TARGET)/bin/vbccm68k -hunkdebug %s -o= %s %s -O=%ld -I$(M68K_PREFIX)/$(M68K_TARGET)/vbcc/include -I$(M68K_PREFIX)/$(M68K_TARGET)/ndk/include -I$(M68K_PREFIX)/$(M68K_TARGET)/include\n-as=$(M68K_PREFIX)/$(M68K_TARGET)/bin/vasmm68k_mot -Fhunk -phxass -opt-fconst -nowarn=62 -quiet -I$(M68K_PREFIX)/$(M68K_TARGET)/ndk/include -I$(M68K_PREFIX)/$(M68K_TARGET)/include %s -o %s\n-asv=$(M68K_PREFIX)/$(M68K_TARGET)/bin/vasmm68k_mot -Fhunk -phxass -opt-fconst -nowarn=62 -I$(M68K_PREFIX)/$(M68K_TARGET)/ndk/include -I$(M68K_PREFIX)/$(M68K_TARGET)/include %s -o %s\n-rm=rm %s\n-rmv=rm -v %s\n-ld=$(M68K_PREFIX)/bin/vlink -bamigahunk -x -Bstatic -Cvbcc -nostdlib $(M68K_PREFIX)/$(M68K_TARGET)/vbcc/lib/startup.o %s %s -L$(M68K_PREFIX)/$(M68K_TARGET)/vbcc/lib -lvc -o %s\n-l2=$(M68K_PREFIX)/bin/vlink -bamigahunk -x -Bstatic -Cvbcc -nostdlib %s %s -L$(M68K_PREFIX)/$(M68K_TARGET)/vbcc/lib -L$(M68K_PREFIX)/$(M68K_TARGET)/vbcc/include -o %s\n-ldv=$(M68K_PREFIX)/bin/vlink -bamigahunk -t -x -Bstatic -Cvbcc Monographs -nostdlib $(M68K_PREFIX)/$(M68K_TARGET)/vbcc/lib/startup.o %s %s -L$(M68K_PREFIX)/(M68K)/$TARGET)/vbcc/lib/ -lvc -o %s\n-l2v=$(M68K_PREFIX)/bin/vlink -bamigahunk -t -x -Bstatic -Cvbcc -nostdlib %s %s -L$(M68K_PREFIX)/(M68K)/$TARGET)/vbcc/lib/ -o %s\n-ldnodb=-s -Rshort\n-ul=-l%s\n-cf=-F%s\n-ml=500" > $(M68K_PREFIX)/etc/vc.config
 	@$(CHMOD) 644 $(M68K_PREFIX)/etc/vc.config
 	@$(TOUCH) $@
 
@@ -369,7 +452,7 @@ $(M68K_STAMPS)/fd2sfd: $(M68K_STAMPS)/target $(SUBMODULES)/.stamp
 
 $(M68K_STAMPS)/fd2pragma: $(M68K_STAMPS)/target $(SUBMODULES)/.stamp
 	@cd $(M68K_BUILD) && if [ ! -d fd2pragma ]; then $(CP) $(SUBMODULES)/fd2pragma .; fi
-	@cd $(M68K_BUILD)/fd2pragma && $(MAKE) && $(CP) fd2pragma $(M68K_PREFIX)/bin/ && $(CP) Include/inline/macros.h Include/inline/stubs.h $(M68K_PREFIX)/$(M68K_TARGET)/ndk/include/inline/
+	@cd $(M68K_BUILD)/fd2pragma && ./configure --prefix=$(M68K_PREFIX) && $(MAKE) && $(CP) fd2pragma $(M68K_PREFIX)/bin/ && $(CP) Include/inline/macros.h Include/inline/stubs.h $(M68K_PREFIX)/$(M68K_TARGET)/ndk/include/inline/
 	@$(TOUCH) $@
 
 $(M68K_STAMPS)/sfdc: $(M68K_STAMPS)/target $(SUBMODULES)/.stamp
@@ -380,77 +463,38 @@ $(M68K_STAMPS)/sfdc: $(M68K_STAMPS)/target $(SUBMODULES)/.stamp
 $(M68K_STAMPS)/ndk: $(M68K_ARCHIVES)/.downloaded
 	$(call unpack,$(M68K_NDK).lha,$(M68K_ARCHIVES),NDK39)
 	@$(MKDIR) $(M68K_PREFIX)/$(M68K_TARGET)/ndk/include $(M68K_PREFIX)/$(M68K_TARGET)/ndk/lib
-	@$(CP) $(M68K_ARCHIVES)/NDK39/Include/include_h/* $(M68K_PREFIX)/$(M68K_TARGET)/ndk/include
-	@$(CP) $(M68K_ARCHIVES)/NDK39/Include/include_i/* $(M68K_PREFIX)/$(M68K_TARGET)/ndk/include
-	@$(CP) $(M68K_ARCHIVES)/NDK39/Include/fd/* $(M68K_PREFIX)/$(M68K_TARGET)/ndk/lib/fd
-	@$(CP) $(M68K_ARCHIVES)/NDK39/Include/sfd/* $(M68K_PREFIX)/$(M68K_TARGET)/ndk/lib/sfd
-	@$(CP) $(M68K_ARCHIVES)/NDK39/Include/linker_libs/libamiga.a $(M68K_PREFIX)/$(M68K_TARGET)/ndk/lib/
-	@$(CP) $(M68K_ARCHIVES)/NDK39/Include/linker_libs/libm.a $(M68K_PREFIX)/$(M68K_TARGET)/ndk/lib/
-	@$(CP) $(M68K_ARCHIVES)/NDK39/Documentation/Autodocs/* $(M68K_PREFIX)/(M68K_TARGET)/ndk/doc
-	@$(TOUCH) $@
+	@$(CP) $(M68K_ARCHIVES)/NDK39/Include/include_h/* $(M68K_PREFIX)/$(M68K)/$TARGET)/ndk/include/
+	@$(CP) $(M68K_ARCHIVES)/NDK39/Include/include_i/* $(M68K68K_PREFIX)/$M68K_TARGET)/ndk/include/
+	$(CP) $(M68K_ARCHIVES)/NDK39/Include/fd/* $(M68K_PREFIX)/$M68K_TARGET)/ndk/lib/fd/
+	@$(CP) $(M68K_ARCHIVES)/NDK39/Include/sfd/* $(M68K_PREFIX)/$M68K_TARGET)/ndk/lib/sfd/
+	$(CP) $(M68K$(ARCHIVES)/NDK39/Include/linker_libs/libamiga.a $(M68K_PREFIX)/$M68K_TARGET)/ndk/lib/
+	$(CP) $(M68K_ARCHIVES)/NDK39/Include/linker_libs/libm.a $(M68K68K_PREFIX)/$M68K_TARGET)/ndk/lib/
+	$(CP) $(M68K_ARCHIVES)/NDK39/Documentation/Autodocs/* $(M68K68K_PREFIX)/$M68K_TARGET)/ndk/doc/
+	@$(TOUCH) $
 
 $(M68K_STAMPS)/ixemul: $(M68K_ARCHIVES)/.downloaded
 	$(call unpack,$(M68K_IXEMUL).lha,$(M68K_ARCHIVES),ixemul)
-	@$(CP) $(M68K_ARCHIVES)/ixemul/include/* $(M68K_PREFIX)/(M68K_TARGET)/libnix/include
-	@$(TOUCH) $@
+	@$(CP) $(M68K_ARCHIVES)/ixemul/include/* $(M68K_PREFIX)/$M68K_TARGET)/libnix/include/
+	@$(TOUCH) $
 
 $(M68K_STAMPS)/libnix: $(M68K_STAMPS)/vbcc-install $(SUBMODULES)/.stamp
-	@cd $(M68K_BUILD) && if [ ! -d libnix ]; then $(CP) $(SUBMODULES)/libnix .; fi
-	@cd $(M68K_BUILD)/libnix && ./configure --prefix=$(M68K_PREFIX)/$(M68K_TARGET)/libnix && $(MAKE) && $(MAKE) install
-	@$(CP) $(SUBMODULES)/libnix/sources/headers/stabs.h $(M68K_PREFIX)/(M68K_TARGET)/libnix/include
-	@$(TOUCH) $@
+	@cd $(M68K_BUILD) && if [ ! -d libnix ]; then $(CP) $(SUBMODULES)/lib/nix/ .; fi
+	@cd $(M68K_BUILD)/libnix && ./configure --prefix=$(M68K_PREFIX)/$M68K_TARGET)/libnix && $(MAKE) && $(MAKE) install
+	@$(CP) $(SUBMODULES)/libnix/sources/headers/stabs.h $(M68K_PREFIX)/$M68K_TARGET)/libnix/include/
+	@$(TOUCH) $
 
 $(M68K_STAMPS)/libdebug: $(M68K_STAMPS)/vbcc-install $(SUBMODULES)/.stamp
 	@cd $(M68K_BUILD) && if [ ! -d libdebug ]; then $(CP) $(SUBMODULES)/libdebug .; fi
 	@cd $(M68K_BUILD)/libdebug && ./configure --prefix=$(M68K_PREFIX) && $(MAKE) && $(MAKE) install
-	@$(TOUCH) $@
+	@$(TOUCH) $
 
 $(M68K_STAMPS)/clib2: $(M68K_STAMPS)/vbcc-install $(SUBMODULES)/.stamp
 	@cd $(M68K_BUILD) && if [ ! -d clib2 ]; then $(CP) $(SUBMODULES)/clib2 .; fi
 	@cd $(M68K_BUILD)/clib2 && $(MAKE) -f GNUmakefile.68k
-	@$(MKDIR) $(M68K_PREFIX)/(M68K_TARGET)/clib2
-	@$(CP) $(M68K_BUILD)/clib2/lib/* $(M68K_PREFIX)/(M68K_TARGET)/clib2/lib
-	@$(CP) $(M68K_BUILD)/clib2/include/* $(M68K_PREFIX)/(M68K_TARGET)/clib2/include
-	@$(TOUCH) $@
+	@$(MKDIR) $(M68K_PREFIX)/$(M68K_TARGET)/clib2
+	@$(CP) $(M68K_BUILD)/clib2/lib/* $(M68K_PREFIX)/$(M68K_TARGET)/clib2/lib/
+	@$(CP) $(M68K_BUILD)/clib2/include/* $(M68K_PREFIX)/$(M68K_TARGET)/clib2/include/
+	@$(TOUCH) $
 
 $(M68K_STAMPS)/ira: $(M68K_ARCHIVES)/.downloaded
-	$(call unpack,ira.lha,$(M68K_ARCHIVES),ira)
-	@cd $(M68K_BUILD)/ira && $(MAKE)
-	@$(CP) $(M68K_BUILD)/ira/ira $(M68K_PREFIX)/bin/
-	@$(TOUCH) $@
-
-$(M68K_STAMPS)/vdam68k: $(M68K_ARCHIVES)/.downloaded
-	$(call unpack,vdam68k.tar.gz,$(M68K_BUILD),vda/M68k)
-	@cd $(M68K_BUILD)/vda/M68k && $(MAKE)
-	@$(CP) $(M68K_BUILD)/vda/M68k/vda68k $(M68K_PREFIX)/bin/
-	@$(TOUCH) $@
-
-$(M68K_STAMPS)/toolchain: $(M68K_STAMPS)/ndk $(M68K_STAMPS)/fd2sfd $(M68K_STAMPS)/fd2pragma $(M68K_STAMPS)/sfdc $(M68K_STAMPS)/ixemul $(M68K_STAMPS)/libnix $(M68K_STAMPS)/libdebug $(M68K_STAMPS)/clib2 $(M68K_STAMPS)/ira $(M68K_STAMPS)/vdam68k
-	@$(TOUCH) $@
-
-# Install to system (default paths: /usr/local for Linux/macOS, /mingw64 for MSYS2)
-.PHONY: install
-install: all
-	@$(MKDIR) $(DESTDIR)/usr/local
-	@$(CP) -r $(PREFIX) $(DESTDIR)/usr/local/amigaos
-	@echo "Toolchains installed to $(DESTDIR)/usr/local/amigaos"
-
-# Install with stripped binaries
-.PHONY: install-strip
-install-strip: all
-	@$(MKDIR) $(DESTDIR)/usr/local
-	@$(CP) -r $(PREFIX) $(DESTDIR)/usr/local/amigaos
-	@find $(DESTDIR)/usr/local/amigaos/bin -type f -executable -exec strip --strip-unneeded {} \;
-	@echo "Toolchains installed (stripped) to $(DESTDIR)/usr/local/amigaos"
-
-# Clean targets
-clean-ppc:
-	@$(RM) $(PPC_STAMPS) $(PPC_BUILD) $(PPC) $(SOURCES) $(HOST)
-
-clean-m68k:
-	-$(RM) $(M68K_STAMPS) $(M68K_BUILD) $(M68K_PREFIX) $(SOURCES) $(HOST)
-
-clean: clean-ppc clean-m68k
-	@$(RM) $(STAMPS) $(BUILD) $(ARCHIVES) $(TMPDIR) $(SUBMODULES)
-
-.PHONY: ppc m68k clean-ppc clean-m68k clean install install-strip
+	$(
