@@ -4,20 +4,25 @@ Down for repairs! AmigaOS cross compiler for Linux / MacOSX / Windows
 Go see the actual one at https://github.com/adtools/amigaos-cross-toolchain
 ===
 
-These instructions I added are untested other than Linux.
-
+These instructions I added are untested other than Linux.<BR />
+If you have problems then #1 is check your url downloads.<BR />
+Does the file still exist there? We scan for updated files for some tools.<BR />
+You can place expected files in the downloads folder.<BR />
+Github expects a folder, some expect tar.gz, .lha, etc. for sources.<BR />
+<BR />
 # Requirements<BR />
 Use make -j$(nproc) (Linux) or make -j$(sysctl -n hw.ncpu) (macOS) for faster builds.<BR />
 If you have issues, verify the download links in the makefile.<BR />
 ## Linux (Ubuntu/Debian):<BR />
 `sudo apt update`<BR />
-`sudo apt install -y gcc g++ make curl patch bison flex subversion git perl gperf tar p7zip-full libncurses-dev`<BR />
+`sudo apt install -y gcc g++ make curl patch bison flex subversion git perl gperf tar p7zip-full libncurses-dev help2man gettext`<BR />
 <BR />
 `make all`<BR />
 or<BR />
 `make ppc`<BR />
 `make m68k`<BR />
 before rebuilding `make clean`<BR />
+Remove existing downloads before rebuilding (not recommended) `make clean-downloads`<BR />
 
 Custom install location (full) path: `make PREFIX=/custom/path`<BR />
 
