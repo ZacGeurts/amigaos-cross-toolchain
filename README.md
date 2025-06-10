@@ -4,19 +4,18 @@ Down for repairs! AmigaOS cross compiler for Linux / MacOSX / Windows
 Go see the actual one at https://github.com/adtools/amigaos-cross-toolchain
 ===
 
+These instructions I added are untested other than Linux.
+
+# Requirements<BR />
+Use make -j$(nproc) (Linux) or make -j$(sysctl -n hw.ncpu) (macOS) for faster builds.<BR />
 ## Linux (Ubuntu/Debian):<BR />
-sudo apt update<BR />
-sudo apt install -y gcc g++ make curl patch bison flex subversion git perl gperf tar p7zip-full libncurses-dev<BR />
-gcc --version && g++ --version && make --version && curl --version && patch --version && bison --version && flex --version && svn --version && git --version && perl --version && gperf --version && tar --version && 7z<BR />
-mkdir amiga-toolchain && cd amiga-toolchain<BR />
-make<BR />
-make ppc<BR />
-make m68k<BR />
-make clean  # Add to Makefile: clean: @$(RM) $(STAMPS) $(ARCHIVES) $(BUILD) $(TMPDIR) $(SUBMODULES)/.stamp<BR />
-export PATH=$PWD/install/ppc-amigaos/bin:$PATH  # For PPC<BR />
-export PATH=$PWD/install/m68k-amigaos/bin:$PATH  # For M68K<BR />
+`sudo apt update`<BR />
+`sudo apt install -y gcc g++ make curl patch bison flex subversion git perl gperf tar p7zip-full libncurses-dev`<BR />
+<BR />
+
 ppc-amigaos-gcc -o hello hello.c  # PPC example<BR />
 m68k-amigaos-gcc -o hello hello.c  # M68K example<BR />
+
 ## Windows (MSYS2):<BR />
 Download MSYS2 from msys2.org<BR />
 msys2_shell.cmd -mingw64<BR />
@@ -32,6 +31,7 @@ export PATH=$PWD/install/ppc-amigaos/bin:$PATH  # For PPC<BR />
 export PATH=$PWD/install/m68k-amigaos/bin:$PATH  # For M68K<BR />
 ppc-amigaos-gcc -o hello hello.c  # PPC example<BR />
 m68k-amigaos-gcc -o hello hello.c  # M68K example<BR />
+
 ## macOS:<BR />
 Install Homebrew: /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"<BR />
 brew install gcc g++ make curl patch bison flex subversion git perl gperf p7zip ncurses<BR />
@@ -50,7 +50,7 @@ Save Makefile in working directory.<BR />
 <BR />
 Toolchains install to ./install/ppc-amigaos and ./install/m68k-amigaos.<BR />
 <BR />
-Use make -j$(nproc) (Linux) or make -j$(sysctl -n hw.ncpu) (macOS) for faster builds.<BR />
+
 <BR />
 Custom PREFIX: make PREFIX=/custom/path<BR />
 <BR />
