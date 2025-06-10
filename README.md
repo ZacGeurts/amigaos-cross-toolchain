@@ -10,6 +10,10 @@ If you have problems then #1 is check your url downloads.<BR />
 Does the file still exist there? We scan for updated files for some tools.<BR />
 You can place expected files in the downloads folder.<BR />
 Github expects a folder, some expect tar.gz, .lha, etc. for sources.<BR />
+
+# Supports Amiga
+M68K: versions 1.0 through 3.9<BR />
+PowerPC: versions 4.0 through 4.1<BR />
 <BR />
 # Requirements<BR />
 Use make -j$(nproc) (Linux) or make -j$(sysctl -n hw.ncpu) (macOS) for faster builds.<BR />
