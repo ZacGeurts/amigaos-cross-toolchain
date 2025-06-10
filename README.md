@@ -16,7 +16,7 @@ Use make -j$(nproc) (Linux) or make -j$(sysctl -n hw.ncpu) (macOS) for faster bu
 If you have issues, verify the download links in the makefile.<BR />
 ## Linux (Ubuntu/Debian):<BR />
 `sudo apt update`<BR />
-`sudo apt install -y gcc g++ make curl patch bison flex subversion git perl gperf tar p7zip-full libncurses-dev help2man gettext`<BR />
+`sudo apt install -y gcc g++ make curl patch bison flex subversion git perl gperf tar p7zip-full libncurses-dev help2man gettext autopoint`<BR />
 <BR />
 `make all`<BR />
 or<BR />
