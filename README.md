@@ -4,6 +4,7 @@ Down for repairs! AmigaOS cross compiler for Linux / MacOSX / Windows
 Go see the actual one at https://github.com/adtools/amigaos-cross-toolchain
 ===
 
+What are we? Makefile. What else? The rest is the original.<BR />
 These instructions I added are untested other than Linux.<BR />
 If you have problems then #1 is check your url downloads.<BR />
 Does the file still exist there? We scan for updated files for some tools.<BR />
