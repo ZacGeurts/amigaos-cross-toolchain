@@ -7,13 +7,17 @@ If you want my opinion, try the binary.<BR />
 
 What are we? Makefile. What else? The rest is the original.<BR />
 We are downloading common build tools and building our own tools from those.<BR />
-These instructions I added are untested other than Linux.<BR />
-If you have problems then #1 is check your url downloads.<BR />
-Try `make help`<BR />
-Does the file still exist there? We scan for updated files for some tools.<BR />
-Just go download it and place it in the downloads folder. (does Makefile want tar.gz? Expecting a github folder? You either match or update the program)<BR />
+`make help`<BR />
+We show here the Local files you have downloaded.
+We show a URL simple check to ensure the files are there for download still.<BR />
+If you have a problem, try downloading it and extracting it. it can go into downloads and ppc or m68k.<BR />
+Keep the compressed file in there if it is not github or it will try downloading it again<BR />
+<BR />
+You can check the top of the Makefile for URLs it uses and update them as needed.<BR />
 You can place expected files in the downloads folder manually.<BR />
 Github expects a folder, some expect tar.gz, .lha, etc.<BR />
+Try to match what format the makefile expects.<BR />
+The SDK lha has very specific requirements to extract. We use lha or lhasa on Linux.<BR />
 
 # Supports AmigaOS
 M68K: versions 1.0 through 3.9<BR />
