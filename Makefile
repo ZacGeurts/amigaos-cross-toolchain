@@ -1,121 +1,98 @@
-TOP := $(shell pwd)
-PREFIX ?= $(abspath $(TOP)/install)
+# Makefile for AmigaOS Cross-Compilation Toolchain
+# Copyright (c) 2025 Zachary Geurts, MIT License
+
+include versions.mk
+
+TOP := $(abspath .)
+PREFIX := $(TOP)/install
 HOST := $(TOP)/.build/host
 SOURCES := $(TOP)/.build/sources
 DOWNLOADS := $(TOP)/downloads
+PPC_DOWNLOADS := $(DOWNLOADS)/ppc
+M68K_DOWNLOADS := $(DOWNLOADS)/68k
 STAMPS := $(TOP)/.build/stamps
 BUILD := $(TOP)/.build/build
 TMPDIR := $(TOP)/.build/tmp
-SUBMODULES := $(TOP)/submodules
 
 PPC_PREFIX := $(PREFIX)/ppc-amigaos
 PPC_TARGET := ppc-amigaos
 PPC_STAMPS := $(STAMPS)/ppc
 PPC_BUILD := $(BUILD)/ppc
-PPC_ARCHIVES := $(DOWNLOADS)/ppc
 PPC_SDK := SDK_ppc
-PPC_VBCC_BIN := vbcc_bin_amigaosppc
-PPC_VBCC_TARGET := vbcc_target_ppc-amigaos
+PPC_VBCC := vbcc$(VERSIONS[vbcc])
 
 M68K_PREFIX := $(PREFIX)/m68k-amigaos
 M68K_TARGET := m68k-amigaos
 M68K_STAMPS := $(STAMPS)/m68k
 M68K_BUILD := $(BUILD)/m68k
-M68K_ARCHIVES := $(DOWNLOADS)/m68k
-M68K_NDK := NDK_m68k
-M68K_IXEMUL := ixemul_m68k
-M68K_VBCC_BIN := vbcc_bin_amigaos68k
-M68K_VBCC_TARGET := vbcc_target_m68k-amigaos
-M68K_VASM := vasm_m68k
-M68K_VLINK := vlink_m68k
+M68K_NDK := NDK$(VERSIONS[ndk])
+M68K_VBCC := vbcc$(VERSIONS[vbcc])
+M68K_VASM := vasm$(VERSIONS[vasm])
+M68K_VLINK := vlink$(VERSIONS[vlink])
 
-# Latest versions
-M4_VERSION := 1.4.19
-AUTOCONF_VERSION := 2.71
-AUTOMAKE_VERSION := 1.16.5
-LIBTOOL_VERSION := 2.4.7
-TEXINFO_VERSION := 7.2
-GMP_VERSION := 6.3.0
-MPFR_VERSION := 4.2.1
-MPC_VERSION := 1.3.1
-ISL_VERSION := 0.26
-CLOOG_VERSION := 0.18.0
-GAWK_VERSION := 5.3.2
-BISON_VERSION := 3.8.2
-FLEX_VERSION := 2.6.4
-VASM_VERSION := 1.8d
-VLINK_VERSION := 0.16a
-VBCC_VERSION := 0.9f
-NDK_VERSION := 3.2
-IXEMUL_VERSION := 48.2
+PPC_COMPONENTS := autoconf automake binutils clib2 cloog gcc-ppc gmp isl libtool m4 mpc mpfr texinfo vbcc
+M68K_COMPONENTS := autoconf bison binutils clib2 fd2pragma fd2sfd flex gawk gcc-m68k ixemul libdebug libnix m4 ndk sfdc vasm vbcc vbcc-install vlink
 
-# Common URLs
-COMMON_URLS := \
-	https://ftp.gnu.org/gnu/m4/m4-$(M4_VERSION).tar.gz=m4-$(M4_VERSION).tar.gz \
-	https://ftp.gnu.org/gnu/autoconf/autoconf-$(AUTOCONF_VERSION).tar.gz=autoconf-$(AUTOCONF_VERSION).tar.gz \
-	https://ftp.gnu.org/gnu/automake/automake-$(AUTOMAKE_VERSION).tar.gz=automake-$(AUTOMAKE_VERSION).tar.gz \
-	https://ftp.gnu.org/gnu/libtool/libtool-$(LIBTOOL_VERSION).tar.gz=libtool-$(LIBTOOL_VERSION).tar.gz \
-	https://ftp.gnu.org/gnu/texinfo/texinfo-$(TEXINFO_VERSION).tar.gz=texinfo-$(TEXINFO_VERSION).tar.gz \
-	https://gmplib.org/download/gmp/gmp-$(GMP_VERSION).tar.gz=gmp-$(GMP_VERSION).tar.gz \
-	https://www.mpfr.org/mpfr-$(MPFR_VERSION)/mpfr-$(MPFR_VERSION).tar.gz=mpfr-$(MPFR_VERSION).tar.gz \
-	https://ftp.gnu.org/gnu/mpc/mpc-$(MPC_VERSION).tar.gz=mpc-$(MPC_VERSION).tar.gz \
-	https://github.com/Meinersbur/isl/releases/download/isl-$(ISL_VERSION)/isl-$(ISL_VERSION).tar.gz=isl-$(ISL_VERSION).tar.gz \
-	https://github.com/periscop/cloog/releases/download/cloog-$(CLOOG_VERSION)/cloog-$(CLOOG_VERSION).tar.gz=cloog-$(CLOOG_VERSION).tar.gz \
-	https://ftp.gnu.org/gnu/gawk/gawk-$(GAWK_VERSION).tar.gz=gawk-$(GAWK_VERSION).tar.gz \
-	https://ftp.gnu.org/gnu/bison/bison-$(BISON_VERSION).tar.gz=bison-$(BISON_VERSION).tar.gz \
-	https://github.com/westes/flex/releases/download/v$(FLEX_VERSION)/flex-$(FLEX_VERSION).tar.gz=flex-$(FLEX_VERSION).tar.gz
+# Dependencies for components (alphabetized)
+DEPENDS[autoconf] := m4
+DEPENDS[automake] := autoconf
+DEPENDS[binutils] := automake
+DEPENDS[bison] := m4
+DEPENDS[clib2] := gcc-ppc
+DEPENDS[cloog] := isl
+DEPENDS[gcc-m68k] := binutils
+DEPENDS[gcc-ppc] := binutils mpc cloog
+DEPENDS[gmp] := libtool
+DEPENDS[isl] := gmp
+DEPENDS[libdebug] := vbcc-install
+DEPENDS[libnix] := vbcc-install
+DEPENDS[libtool] := autoconf
+DEPENDS[mpc] := mpfr
+DEPENDS[mpfr] := gmp
+DEPENDS[texinfo] := automake
 
-PPC_URLS := \
-	$(COMMON_URLS) \
-	https://github.com/amiga-gcc/binutils-gdb.git=binutils \
-	https://github.com/amiga-gcc/gcc.git=gcc \
-	https://aminet.net/dev/c/vbcc$(VBCC_VERSION)_bin_amigaosppc.lha=$(PPC_VBCC_BIN).lha \
-	https://aminet.net/dev/c/vbcc_target_ppc-amigaos.lha=$(PPC_VBCC_TARGET).lha
+# Configuration flags for autotools (alphabetized)
+CONFIG_FLAGS[bison] := --disable-nls
+CONFIG_FLAGS[cloog] := --with-gmp-prefix=$(HOST) --with-isl-prefix=$(HOST) --disable-static
+CONFIG_FLAGS[flex] := --disable-nls
+CONFIG_FLAGS[gmp] := --disable-static
+CONFIG_FLAGS[isl] := --with-gmp-prefix=$(HOST) --disable-static
+CONFIG_FLAGS[libtool] := --disable-static
+CONFIG_FLAGS[m4] := CFLAGS="-Wno-error"
+CONFIG_FLAGS[mpc] := --with-gmp=$(HOST) --with-mpfr=$(HOST) --disable-static
+CONFIG_FLAGS[mpfr] := --with-gmp=$(HOST) --disable-static
+CONFIG_FLAGS[texinfo] := --disable-perl-api
 
-M68K_URLS := \
-	$(COMMON_URLS) \
-	https://github.com/amiga-gcc/binutils-gdb.git=binutils \
-	https://github.com/amiga-gcc/gcc.git=gcc \
-	https://aminet.net/dev/misc/NDK$(NDK_VERSION).lha=$(M68K_NDK).lha \
-	https://github.com/amiga-gcc/ixemul.git=ixemul \
-	https://aminet.net/dev/c/vbcc$(VBCC_VERSION)_bin_amigaos68k.lha=$(M68K_VBCC_BIN).lha \
-	https://aminet.net/dev/c/vbcc_target_m68k-amiga.lha=$(M68K_VBCC_TARGET).lha \
-	http://server.owl.de/~frank/tags/vasm$(VASM_VERSION).tar.gz=$(M68K_VASM).tar.gz \
-	http://server.owl.de/~frank/tags/vlink$(VLINK_VERSION).tar.gz=$(M68K_VLINK).tar.gz
+# Tools
+TOOLS := CC=gcc CXX=g++ MAKE=make CURL=curl PATCH=patch BISON=bison FLEX=flex SVN=svn GIT=git PERL=perl GPERF=gperf YACC=yacc HELP2MAN=help2man AUTOPOINT=autopoint
+ARCHIVE_TOOLS := GZIP=gzip BZIP2=bzip2 XZ=xz
+$(foreach tool,$(TOOLS),$(eval $(word 1,$(subst =, ,$(tool))) := $(word 2,$(subst =, ,$(tool)))))
+$(foreach tool,$(ARCHIVE_TOOLS),$(eval ARCHIVE_TOOL_$(word 1,$(subst =, ,$(tool))) := $(word 2,$(subst =, ,$(tool)))))
 
-CC := gcc
-CXX := g++
-MAKE := make
-CURL := curl
-PATCH := patch
-BISON := bison
-FLEX := flex
-SVN := svn
-GIT := git
-PERL := perl
-GPERF := gperf
-YACC := yacc
-TAR := tar
-CP := cp
-MKDIR := mkdir
-RM := rm
-CHMOD := chmod
-TOUCH := touch
-HELP2MAN := help2man
-AUTOPOINT := autopoint
-
+# OS detection
 OS := $(shell uname -s)
 ifeq ($(OS),Linux)
-	SEVENZ := 7z
-	LHASA := lhasa
-	ARCHIVE_TOOL := $(shell command -v $(SEVENZ) >/dev/null 2>&1 && echo $(SEVENZ) || (command -v $(LHASA) >/dev/null 2>&1 && echo $(LHASA) || echo 7z))
+	ARCHIVE_TOOL_LHA := lhasa
+	OS_NAME := Linux
 else ifeq ($(OS),Darwin)
-	ARCHIVE_TOOL := 7z
+	ARCHIVE_TOOL_LHA := lha
+	OS_NAME := macOS
+else ifeq ($(OS),AmigaOS)
+	OS_NAME := AmigaOS
+	ARCHIVE_TOOL_LHA := lha
+	ifeq ($(shell uname -m),m68k)
+		OS_SUBTYPE := M68K
+	else
+		OS_SUBTYPE := PPC
+	endif
 else ifeq ($(OS),Windows_NT)
-	ARCHIVE_TOOL := 7z
+	ARCHIVE_TOOL_LHA := lha
+	OS_NAME := Windows
 else
-	$(error Unsupported operating system: $(OS))
+	OS_NAME := Unknown
+	ARCHIVE_TOOL_LHA := lha
 endif
+ARCHIVE_TOOL_LHA := $(shell command -v $(ARCHIVE_TOOL_LHA) || echo $(ARCHIVE_TOOL_LHA))
 
 CFLAGS := -g -O2
 CXXFLAGS := -g -O2
@@ -123,7 +100,7 @@ CXXFLAGS := -g -O2
 ifeq ($(OS),Windows_NT)
 	SHELL := cmd.exe
 	MKDIR := mkdir
-	CP := copy
+	CP := copy /Y
 	RM := del /Q
 	TOUCH := echo. >
 	CHMOD := attrib
@@ -138,476 +115,314 @@ else
 	PATHSEP := /
 endif
 
-.PHONY: all clean clean-download help ppc m68k
+.DEFAULT_GOAL := help
 
+.PHONY: all clean clean-download help ppc m68k check_tools check_headers
 all: ppc m68k
-	@echo "Building both PPC and M68K toolchains..."
-
-default: all
-
-clean:
-	$(RM) $(TOP)/.build $(PREFIX)
-	@echo "Cleaned build and install directories."
-
-clean-download:
-	$(RM) $(DOWNLOADS)
-	@echo "Cleaned downloads directory."
-
-define find_latest
-	url=$(1); pkg=$(2); ext=$(3); \
-	tmpfile=$(TMPDIR)/$$pkg.html; \
-	$(MKDIR) $(TMPDIR); \
-	$(CURL) -s $$url > $$tmpfile; \
-	latest=$$(grep -o "$$pkg-[0-9]\+\.[0-9]\+\.[0-9]\+$$ext" $$tmpfile | sort -V | tail -n 1); \
-	if [ -z "$$latest" ]; then \
-		echo "ERROR: Could not find latest version for $$pkg at $$url"; exit 1; \
-	else \
-		version=$${latest#$$pkg-}; version=$${version%%$$ext}; \
-		echo "$$pkg latest version: $$version"; \
-		echo "$$url/$$latest=$$latest"; \
-		$(RM) $$tmpfile; \
-	fi
-endef
-
-find-latest: | $(TMPDIR)
-	$(call find_latest,https://gmplib.org/download/gmp/,gmp,.tar.gz)
-	$(call find_latest,https://ftp.gnu.org/gnu/gawk/,gawk,.tar.gz)
-	$(call find_latest,https://ftp.gnu.org/gnu/bison/,bison,.tar.gz)
-	$(call find_latest,https://ftp.gnu.org/gnu/texinfo/,texinfo,.tar.gz)
-	$(call find_latest,https://ftp.gnu.org/gnu/mpc/,mpc,.tar.gz)
-
-DIRS := $(STAMPS) $(PPC_STAMPS) $(M68K_STAMPS) $(SOURCES) $(DOWNLOADS) $(PPC_ARCHIVES) $(M68K_ARCHIVES) $(BUILD) $(PPC_BUILD) $(M68K_BUILD) $(TMPDIR) $(PREFIX) $(PPC_PREFIX) $(M68K_PREFIX)
-$(DIRS):
-	$(MKDIR) $@
-
-CHECK_TOOLS := $(CC) $(CXX) $(CURL) $(PATCH) $(BISON) $(FLEX) $(MAKE) $(SVN) $(GIT) $(PERL) $(GPERF) $(YACC) $(TAR) $(HELP2MAN) $(AUTOPOINT) $(ARCHIVE_TOOL)
-check_tools: $(CHECK_TOOLS)
-$(CHECK_TOOLS):
-	@if ! command -v $@ >/dev/null 2>&1; then \
-		echo "Error: Tool '$@' not found."; \
-		case $(OS) in \
-			Linux) \
-				echo "Please install it with: sudo apt-get install $@"; \
-			Darwin) \
-				echo "Please install it with: brew install $@"; \
-			Windows_NT) \
-				echo "Please install it with: choco install $@"; \
-		esac; \
-		exit 1; \
-	fi
-check_archive_tool:
-	@if ! command -v $(ARCHIVE_TOOL) >/dev/null 2>&1; then \
-		echo "Error: Archive tool '$(ARCHIVE_TOOL)' not found."; \
-		case $(OS) in \
-			Linux) \
-				echo "Please install 'p7zip' or 'lhasa' with: sudo apt-get install p7zip lhasa"; \
-			Darwin) \
-				echo "Please install 'p7zip' with: brew install p7zip"; \
-			Windows_NT) \
-				echo "Please install '7zip' from: https://www.7-zip.org/"; \
-		esac; \
-		exit 1; \
-	fi
-
-$(TMPDIR)/check_ncurses.h: | $(TMPDIR)
-	echo "#include <ncurses.h>" > $@
-	echo "int main() { return 0; }" >> $@
-check_headers: check_tools check_archive_tool $(TMPDIR)/check_ncurses.h
-	$(CC) $(TMPDIR)/check_ncurses.h -o /dev/null 2>/dev/null || { echo "ERROR: Missing ncurses development headers"; exit 1; }
-
-$(SUBMODULES)/.stamp: | $(SUBMODULES)
-	$(GIT) submodule sync
-	$(GIT) submodule update --init --force || { echo "WARNING: Submodule update failed, attempting manual clone..."; \
-		cd $(SUBMODULES) && \
-		for pkg in binutils-2.14 gcc-2.95.3 clib2 libnix fd2sfd sfdc libdebug fd2pragma; do \
-			if [ ! -d "$$pkg" ]; then \
-				case $$pkg in \
-					binutils-2.14) $(GIT) clone https://github.com/adtools/amigaos-binutils-2.14 $$pkg ;; \
-					gcc-2.95.3) $(GIT) clone https://github.com/cahirwpz/amigaos-gcc-2.95.3 $$pkg ;; \
-					clib2) $(GIT) clone https://github.com/adtools/clib2 $$pkg ;; \
-					libnix) $(GIT) clone https://github.com/cahirwpz/libnix $$pkg ;; \
-					fd2sfd) $(GIT) clone https://github.com/cahirwpz/fd2sfd $$pkg ;; \
-					sfdc) $(GIT) clone https://github.com/adtools/sfdc $$pkg ;; \
-					libdebug) $(GIT) clone https://github.com/cahirwpz/libdebug $$pkg ;; \
-					fd2pragma) $(GIT) clone https://github.com/cahirwpz/fd2pragma $$pkg ;; \
-				esac; \
-			fi; \
-		done; }
-	$(TOUCH) $@
+clean: ; $(RM) $(TOP)/.build $(PREFIX)
+clean-download: ; $(RM) $(DOWNLOADS)
 
 define download
-	$(MKDIR) $(2)
-	@for pkg in $(1); do \
-		name="$$(echo "$$pkg" | sed 's/.*=//')"; \
-		pkgurl="$$(echo "$$pkg" | sed 's/=.*//')"; \
-		if [ -n "$$name" ] && [ "$$name" != "$$pkgurl" ]; then \
-			if echo "$$pkgurl" | grep -q '\.git$$'; then \
-				if [ ! -d "$(DOWNLOADS)/$$name" ]; then \
-					echo "Cloning $$pkgurl into $(DOWNLOADS)/$$name"; \
-					$(GIT) clone "$$pkgurl" "$(DOWNLOADS)/$$name" || { echo "ERROR: Failed to clone $$pkgurl"; exit 1; }; \
-				else \
-					echo "$$name already exists in $(DOWNLOADS)"; \
-				fi; \
-				$(MKDIR) "$(2)/$$name"; \
-				$(CP) "$(DOWNLOADS)/$$name"/* "$(2)/$$name/"; \
-			else \
-				if [ ! -f "$(DOWNLOADS)/$$name" ]; then \
-					echo "Downloading $$pkgurl to $(DOWNLOADS)/$$name"; \
-					$(CURL) -L -o "$(DOWNLOADS)/$$name" "$$pkgurl" || { echo "ERROR: Failed to download $$pkgurl"; exit 1; }; \
-				else \
-					echo "$$name already exists in $(DOWNLOADS)"; \
-				fi; \
-				$(CP) "$(DOWNLOADS)/$$name" "$(2)/"; \
-			fi; \
+	$(MKDIR) $(2); \
+	for pkg in $(1); do \
+		name=$$(echo "$$pkg" | cut -d'=' -f1); \
+		version=$$(echo "$$pkg" | cut -d'=' -f2); \
+		url=$$(echo "$$pkg" | cut -d'=' -f3); \
+		target=$$(echo "$$pkg" | cut -d'=' -f4); \
+		platform=$$(echo "$$pkg" | cut -d'=' -f5); \
+		dir=$$([ "$$platform" = "ppc" ] && echo $(PPC_DOWNLOADS) || [ "$$platform" = "m68k" ] && echo $(M68K_DOWNLOADS) || echo $(DOWNLOADS)); \
+		$(MKDIR) "$$dir"; \
+		if [ "$$version" = "git" ]; then \
+			[ -d "$$dir/$$target" ] && echo "$$target exists in $$dir" || \
+			(echo "Cloning $$url" && $(GIT) clone "$$url" "$$dir/$$target" || { echo "ERROR: Failed to clone $$url"; exit 2; }); \
+			$(MKDIR) "$(2)/$$target"; $(CP) "$$dir/$$target"/* "$(2)/$$target/"; \
 		else \
-			name="$$(basename "$$pkgurl")"; \
-			if [ ! -f "$(DOWNLOADS)/$$name" ]; then \
-				echo "Downloading $$pkgurl to $(DOWNLOADS)/$$name"; \
-				$(CURL) -L -o "$(DOWNLOADS)/$$name" "$$pkgurl" || { echo "ERROR: Failed to download $$pkgurl"; exit 1; }; \
-			else \
-				echo "$$name already exists in $(DOWNLOADS)"; \
-			fi; \
-			$(CP) "$(DOWNLOADS)/$$name" "$(2)/"; \
+			[ -f "$$dir/$$target" ] && echo "$$target exists in $$dir" || \
+			(echo "Downloading $$url" && $(CURL) -L -f -o "$$dir/$$target" "$$url" || { echo "ERROR: Failed to download $$url"; exit 2; }); \
+			$(CP) "$$dir/$$target" "$(2)/"; \
 		fi; \
 	done; \
 	$(TOUCH) $(2)/.downloaded
 endef
 
 define unpack
-	cd $(2) && \
-	if [ "${1##*.}" = "lha" ]; then \
-		if [ "$(ARCHIVE_TOOL)" = "$(LHASA)" ]; then \
-			$(LHASA) x "$(DOWNLOADS)/$1" $(3) || { echo "ERROR: Failed to extract $1"; exit 1; }; \
-		else \
-			$(ARCHIVE_TOOL) x "$(DOWNLOADS)/$1" -o$(2) $(3) || { echo "ERROR: Failed to extract $1"; exit 1; }; \
-		fi; \
-	elif [ "${1##*.}" = "gz" ] || [ "${1##*.}" = "bz2" ] || [ "${1##*.}" = "xz" ] || [ "${1##*.}" = "lz" ] || [ "${1##*.}" = "zst" ]; then \
-		$(TAR) -xf "$(DOWNLOADS)/$1" -C $(2) $(3) || { echo "ERROR: Failed to extract $1"; exit 1; }; \
-	else \
-		echo "ERROR: Unsupported archive: ${1##*.}"; exit 1; \
-	fi
+	$(MKDIR) $(3); cd $(3); \
+	dir=$$([ "$(4)" = "ppc" ] && echo $(PPC_DOWNLOADS) || [ "$(4)" = "m68k" ] && echo $(M68K_DOWNLOADS) || echo $(DOWNLOADS)); \
+	[ -f "$$dir/$(2)" ] || { echo "ERROR: Archive $$dir/$(2) not found"; exit 2; }; \
+	case "$$(echo $(2) | grep -o '[^.]*$$')" in \
+		lha) $(ARCHIVE_TOOL_LHA) x "$$dir/$(2)" || { echo "ERROR: Failed to extract $$dir/$(2)"; exit 2; };; \
+		gz|Z|z) $(ARCHIVE_TOOL_GZIP) -d "$$dir/$(2)" -c | tar -x || { echo "ERROR: Failed to extract $$dir/$(2)"; exit 2; };; \
+		bz2) $(ARCHIVE_TOOL_BZIP2) -d "$$dir/$(2)" -c | tar -x || { echo "ERROR: Failed to extract $$dir/$(2)"; exit 2; };; \
+		xz|lz|zst) $(ARCHIVE_TOOL_XZ) -d "$$dir/$(2)" -c | tar -x || { echo "ERROR: Failed to extract $$dir/$(2)"; exit 2; };; \
+		*) echo "ERROR: Unsupported archive: $(2)"; exit 2;; \
+	esac
 endef
 
 define update_autotools
-	$(RM) $(1)/config.guess $(1)/config.sub
-	$(CP) $(SOURCES)/automake/lib/config.guess $(1)/
-	$(CP) $(SOURCES)/automake/lib/config.sub $(1)/
+	$(RM) $(1)/config.{guess,sub}; \
+	$(CP) $(SOURCES)/automake/lib/config.{guess,sub} $(1)/
 endef
 
 define generate_autogen
-	cd $(1) && \
+	cd $(1); \
 	if [ ! -f autogen.sh ]; then \
 		echo "Generating autogen.sh in $(1)"; \
-		echo "#!/bin/bash" > autogen.sh; \
-		echo "set -e" >> autogen.sh; \
-		if [ -f configure.ac ]; then \
-			echo "libtoolize --force --copy" >> autogen.sh; \
-			echo "aclocal -I m4" >> autogen.sh; \
-			echo "autoconf" >> autogen.sh; \
-			echo "autoheader" >> autogen.sh; \
-		fi; \
-		if [ -f Makefile.am ]; then \
-			echo "automake --add-missing --copy --foreign" >> autogen.sh; \
-		fi; \
+		{ echo "#!/bin/bash"; echo "set -e"; \
+		  [ -f configure.ac ] && { echo "libtoolize --force --copy"; echo "aclocal -I m4"; echo "autoconf"; echo "autoheader"; }; \
+		  [ -f Makefile.am ] && echo "automake --add-missing --copy --foreign"; } > autogen.sh; \
 		$(CHMOD) +x autogen.sh; \
 	else \
-		echo "autogen.sh already exists in $(1)"; \
+		echo "autogen.sh exists in $(1)"; \
 	fi
 endef
 
 define build_autotools
-	$(MKDIR) $(2)
-	cd $(2) && \
-		$(call generate_autogen,$(2)); \
-		if [ ! -f bootstrap ]; then \
-			$(CP) autogen.sh bootstrap; \
-		fi; \
-		./bootstrap || { echo "ERROR: Bootstrap failed for $1"; exit 1; }; \
-		./configure --prefix=$(HOST) $(3) || { echo "ERROR: Configure failed for $1"; exit 1; }; \
-		$(MAKE) || { echo "ERROR: Make failed for $1"; exit 1; }; \
-		$(MAKE) install || { echo "ERROR: Make install failed for $1"; exit 1; }; \
+	$(MKDIR) $(2); cd $(2); \
+	$(call generate_autogen,$(2)); \
+	[ -f bootstrap ] || $(CP) autogen.sh bootstrap; \
+	./bootstrap && ./configure --prefix=$(HOST) $(3) && $(MAKE) && $(MAKE) install; \
 	$(call update_autotools,$(2)); \
 	$(TOUCH) $(4)/$1
 endef
 
-PPC_COMPONENTS := m4 autoconf libtool automake texinfo gmp mpfr mpc isl cloog binutils gcc sdk vbcc
-M68K_COMPONENTS := m4 gawk autoconf flex bison texinfo target vasm vlink vbcc vbcc-install fd2sfd fd2pragma sfdc ndk ixemul libnix libdebug clib2
+DIRS := $(STAMPS) $(PPC_STAMPS) $(M68K_STAMPS) $(SOURCES) $(DOWNLOADS) $(PPC_DOWNLOADS) $(M68K_DOWNLOADS) $(BUILD) $(PPC_BUILD) $(M68K_BUILD) $(TMPDIR) $(PREFIX) $(PPC_PREFIX) $(M68K_PREFIX)
+$(shell $(MKDIR) $(DIRS))
 
-$(SOURCES)/automake: $(PPC_ARCHIVES)/.downloaded | $(SOURCES)
-	$(MKDIR) $(SOURCES)/automake
-	$(CP) $(PPC_ARCHIVES)/automake/* $(SOURCES)/automake/
-	$(TOUCH) $@
+CHECK_TOOLS := $(foreach tool,$(TOOLS),$(word 1,$(subst =, ,$(tool)))) $(foreach tool,$(ARCHIVE_TOOLS),ARCHIVE_TOOL_$(word 1,$(subst =, ,$(tool))))
+check_tools: $(CHECK_TOOLS)
+$(CHECK_TOOLS):
+	@command -v $($@) >/dev/null || { echo "Error: $($@) not found. Install via: $(if $(filter $(OS_NAME),Linux),sudo apt install,$(if $(filter $(OS_NAME),macOS),brew install,$(if $(filter $(OS_NAME),Windows),choco install,$(if $(filter $(OS_NAME),AmigaOS),Download from Aminet or OS4Depot,Check package manager for)))) $(if $(filter $(OS_NAME),Linux),$(if $(filter $($@),ARCHIVE_TOOL_GZIP),gzip,$(if $(filter $($@),ARCHIVE_TOOL_BZIP2),bzip2,$(if $(filter $($@),ARCHIVE_TOOL_XZ),xz-utils,$(if $(filter $($@),ARCHIVE_TOOL_LHA),lhasa,$(patsubst ARCHIVE_TOOL_%,%,$@)))))),$(patsubst ARCHIVE_TOOL_%,%,$@))"; exit 2; }
 
-$(PPC_ARCHIVES)/.downloaded: | $(PPC_ARCHIVES)
-	$(call download,$(PPC_URLS),$(PPC_ARCHIVES))
-	if [ ! -f "$(DOWNLOADS)/ppc/$(PPC_SDK).lha" ]; then \
-		echo "Error: Please place the PPC SDK file ($(PPC_SDK).lha) in $(DOWNLOADS)/ppc/ before building."; \
-		echo "Download from: https://www.hyperion-entertainment.com/index.php/downloads"; \
-		exit 1; \
-	fi
-	$(CP) $(DOWNLOADS)/ppc/$(PPC_SDK).lha $(PPC_ARCHIVES)/
-	if [ ! -f "$(DOWNLOADS)/ppc/$(PPC_VBCC_BIN).lha" ]; then \
-		echo "Error: Please place the vbcc binary file ($(PPC_VBCC_BIN).lha) in $(DOWNLOADS)/ppc/ before building."; \
-		echo "Download from: https://aminet.net/dev/c/"; \
-		exit 1; \
-	fi
-	$(CP) $(DOWNLOADS)/ppc/$(PPC_VBCC_BIN).lha $(PPC_ARCHIVES)/
-	if [ ! -f "$(DOWNLOADS)/ppc/$(PPC_VBCC_TARGET).lha" ]; then \
-		echo "Error: Please place the vbcc target file ($(PPC_VBCC_TARGET).lha) in $(DOWNLOADS)/ppc/ before building."; \
-		echo "Download from: https://aminet.net/dev/c/"; \
-		exit 1; \
-	fi
-	$(CP) $(DOWNLOADS)/ppc/$(PPC_VBCC_TARGET).lha $(PPC_ARCHIVES)/
-	$(TOUCH) $@
+$(TMPDIR)/check_ncurses.h: | $(TMPDIR)
+	@echo "#include <ncurses.h>\nint main() { return 0; }" > $@
+check_headers: check_tools $(TMPDIR)/check_ncurses.h
+	$(CC) $(TMPDIR)/check_ncurses.h -o /dev/null 2>/dev/null || { echo "ERROR: Missing ncurses headers"; exit 2; }
 
-$(PPC_STAMPS)/m4: $(PPC_ARCHIVES)/.downloaded | $(PPC_STAMPS)
-	$(call build_autotools,m4,$(PPC_ARCHIVES)/m4,,$(PPC_STAMPS))
+$(SOURCES)/automake: $(DOWNLOADS)/automake-$(VERSIONS[automake]).tar.gz) | $(SOURCES)
+	$(MKDIR) $(SOURCES)/automake; $(call unpack,automake-$(VERSIONS[automake]).tar.gz,automake-$(VERSIONS[automake]),$(SOURCES)/automake)
 
-$(PPC_STAMPS)/autoconf: $(PPC_STAMPS)/m4 | $(PPC_STAMPS)
-	$(call build_autotools,autoconf,$(PPC_ARCHIVES)/autoconf,,$(PPC_STAMPS))
-
-$(PPC_STAMPS)/libtool: $(PPC_STAMPS)/autoconf | $(PPC_STAMPS)
-	$(call build_autotools,libtool,$(PPC_ARCHIVES)/libtool,--disable-static,$(PPC_STAMPS))
-
-$(PPC_STAMPS)/automake: $(PPC_STAMPS)/autoconf | $(PPC_STAMPS) $(SOURCES)/automake
-	$(call build_autotools,automake,$(PPC_ARCHIVES)/automake,,$(PPC_STAMPS))
-	find $(HOST)/share/automake-* -name ylwrap -exec $(CP) {} $(PPC_ARCHIVES)/binutils/ylwrap \;
-
-$(PPC_STAMPS)/texinfo: $(PPC_STAMPS)/automake
-	$(call unpack,texinfo-$(TEXINFO_VERSION).tar.gz,$(PPC_BUILD),texinfo-$(TEXINFO_VERSION))
-	$(call build_autotools,texinfo,$(PPC_BUILD)/texinfo-$(TEXINFO_VERSION),--disable-perl-api,$(PPC_STAMPS))
-
-$(PPC_STAMPS)/gmp: $(PPC_STAMPS)/libtool
-	$(call unpack,gmp-$(GMP_VERSION).tar.gz,$(PPC_BUILD),gmp-$(GMP_VERSION))
-	$(call build_autotools,gmp,$(PPC_BUILD)/gmp-$(GMP_VERSION),--disable-static,$(PPC_STAMPS))
-
-$(PPC_STAMPS)/mpfr: $(PPC_STAMPS)/gmp
-	$(call build_autotools,mpfr,$(PPC_ARCHIVES)/mpfr,--with-gmp=$(HOST) --disable-static,$(PPC_STAMPS))
-
-$(PPC_STAMPS)/mpc: $(PPC_STAMPS)/mpfr
-	$(call unpack,mpc-$(MPC_VERSION).tar.gz,$(PPC_BUILD),mpc-$(MPC_VERSION))
-	$(call build_autotools,mpc,$(PPC_BUILD)/mpc-$(MPC_VERSION),--with-gmp=$(HOST) --with-mpfr=$(HOST) --disable-static,$(PPC_STAMPS))
-
-$(PPC_STAMPS)/isl: $(PPC_STAMPS)/gmp
-	$(call build_autotools,isl,$(PPC_ARCHIVES)/isl,--with-gmp-prefix=$(HOST) --disable-static,$(PPC_STAMPS))
-
-$(PPC_STAMPS)/cloog: $(PPC_STAMPS)/isl
-	$(call build_autotools,cloog,$(PPC_ARCHIVES)/cloog,--with-isl=system --with-gmp-prefix=$(HOST) --disable-static,$(PPC_STAMPS))
-
-$(PPC_STAMPS)/binutils: $(PPC_STAMPS)/automake
-	cd $(PPC_ARCHIVES)/binutils && ./configure --prefix=$(PPC_PREFIX) --target=$(PPC_TARGET) --disable-nls && $(MAKE) YACC=$(BISON) && $(MAKE) install
-	$(TOUCH) $@
-
-$(PPC_STAMPS)/gcc: $(PPC_STAMPS)/binutils $(PPC_STAMPS)/mpc $(PPC_STAMPS)/cloog
-	cd $(PPC_ARCHIVES)/gcc && CFLAGS="$(CFLAGS)" CC="$(CC)" CXX="$(CXX)" ./configure --prefix=$(PPC_PREFIX) --target=$(PPC_TARGET) --with-gmp=$(HOST) --with-mpfr=$(HOST) --with-isl=$(HOST) --with-cloog=$(HOST) --enable-languages=c,c++ --enable-haifa --enable-sjlj-exceptions --disable-libstdcxx-pch --disable-tls --disable-nls && $(MAKE) && $(MAKE) install
-	$(TOUCH) $@
-
-$(PPC_STAMPS)/sdk: $(PPC_STAMPS)/gcc
-	$(call unpack,$(PPC_SDK).lha,$(PPC_ARCHIVES),SDK_Install)
-	$(MKDIR) $(PPC_PREFIX)/SDK/include $(PPC_PREFIX)/SDK/clib2 $(PPC_PREFIX)/$(PPC_TARGET)/lib
-	$(CP) $(PPC_ARCHIVES)/SDK_Install/* $(PPC_PREFIX)/SDK/
-	$(call unpack,SDK_Install/base.lha,$(PPC_PREFIX)/SDK,Include)
-	$(CP) $(PPC_PREFIX)/SDK/Include/* $(PPC_PREFIX)/SDK/include/
-	$(call unpack,SDK_Install/clib2.lha,$(PPC_PREFIX)/SDK,src)
-	$(CP) $(PPC_PREFIX)/SDK/src/* $(PPC_PREFIX)/SDK/clib2/
-	$(call unpack,SDK_Install/newlib.lha,$(PPC_PREFIX)/SDK,dst)
-	$(CP) $(PPC_PREFIX)/SDK/dst/* $(PPC_PREFIX)/$(PPC_TARGET)/lib/
-	$(TOUCH) $@
-
-$(PPC_STAMPS)/vbcc: $(PPC_ARCHIVES)/.downloaded
-	$(call unpack,$(PPC_VBCC_BIN).lha,$(PPC_ARCHIVES),vbcc)
-	$(call unpack,$(PPC_VBCC_TARGET).lha,$(PPC_ARCHIVES),vbcc_target)
-	$(MKDIR) $(PPC_PREFIX)/bin $(PPC_PREFIX)/$(PPC_TARGET)/vbcc
-	$(CP) $(PPC_ARCHIVES)/vbcc/* $(PPC_PREFIX)/bin/
-	$(CP) $(PPC_ARCHIVES)/vbcc_target/* $(PPC_PREFIX)/$(PPC_TARGET)/vbcc/
-	$(TOUCH) $@
-
-$(PPC_STAMPS)/toolchain: $(addprefix $(PPC_STAMPS)/,$(PPC_COMPONENTS))
-	$(TOUCH) $@
-
-ppc: $(PPC_STAMPS)/toolchain | check_headers $(SUBMODULES)/.stamp
-	@echo "PPC toolchain build completed."
-
-$(M68K_ARCHIVES)/.downloaded: | $(M68K_ARCHIVES)
-	$(call download,$(M68K_URLS),$(M68K_ARCHIVES))
-	if [ ! -f "$(DOWNLOADS)/m68k/$(M68K_NDK).lha" ]; then \
-		echo "Error: Please place the M68K NDK file ($(M68K_NDK).lha) in $(DOWNLOADS)/m68k/ before building."; \
-		echo "Download from: https://aminet.net/dev/misc/"; \
-		exit 1; \
-	fi
-	$(CP) $(DOWNLOADS)/m68k/$(M68K_NDK).lha $(M68K_ARCHIVES)/
-	if [ ! -f "$(DOWNLOADS)/m68k/$(M68K_VBCC_BIN).lha" ]; then \
-		echo "Error: Please place the vbcc binary file ($(M68K_VBCC_BIN).lha) in $(DOWNLOADS)/m68k/ before building."; \
-		echo "Download from: https://aminet.net/dev/c/"; \
-		exit 1; \
-	fi
-	$(CP) $(DOWNLOADS)/m68k/$(M68K_VBCC_BIN).lha $(M68K_ARCHIVES)/
-	if [ ! -f "$(DOWNLOADS)/m68k/$(M68K_VBCC_TARGET).lha" ]; then \
-		echo "Error: Please place the vbcc target file ($(M68K_VBCC_TARGET).lha) in $(DOWNLOADS)/m68k/ before building."; \
-		echo "Download from: https://aminet.net/dev/c/"; \
-		exit 1; \
-	fi
-	$(CP) $(DOWNLOADS)/m68k/$(M68K_VBCC_TARGET).lha $(M68K_ARCHIVES)/
-	$(TOUCH) $@
-
-$(M68K_STAMPS)/m4: $(M68K_ARCHIVES)/.downloaded | $(M68K_STAMPS)
-	$(call build_autotools,m4,$(M68K_ARCHIVES)/m4,,$(M68K_STAMPS))
-
-$(M68K_STAMPS)/autoconf: $(M68K_STAMPS)/m4 | $(M68K_STAMPS)
-	$(call build_autotools,autoconf,$(M68K_ARCHIVES)/autoconf,,$(M68K_STAMPS))
-
-$(M68K_STAMPS)/gawk: $(M68K_STAMPS)/m4
-	$(call unpack,gawk-$(GAWK_VERSION).tar.gz,$(M68K_BUILD),gawk-$(GAWK_VERSION))
-	$(call build_autotools,gawk,$(M68K_BUILD)/gawk-$(GAWK_VERSION),,$(M68K_STAMPS))
-
-$(M68K_STAMPS)/flex: $(M68K_STAMPS)/m4
-	$(call build_autotools,flex,$(M68K_ARCHIVES)/flex,--disable-nls,$(M68K_STAMPS))
-
-$(M68K_STAMPS)/bison: $(M68K_STAMPS)/m4
-	$(call unpack,bison-$(BISON_VERSION).tar.gz,$(M68K_BUILD),bison-$(BISON_VERSION))
-	$(call build_autotools,bison,$(M68K_BUILD)/bison-$(BISON_VERSION),--disable-nls,$(M68K_STAMPS))
-
-$(M68K_STAMPS)/texinfo: $(M68K_STAMPS)/automake
-	$(call unpack,texinfo-$(TEXINFO_VERSION).tar.gz,$(M68K_BUILD),texinfo-$(TEXINFO_VERSION))
-	$(call build_autotools,texinfo,$(M68K_BUILD)/texinfo-$(TEXINFO_VERSION),--disable-perl-api,$(M68K_STAMPS))
-
-$(M68K_STAMPS)/automake: $(M68K_STAMPS)/autoconf $(SOURCES)/automake | $(M68K_STAMPS)
-	$(call build_autotools,automake,$(M68K_ARCHIVES)/automake,,$(M68K_STAMPS))
-
-$(M68K_STAMPS)/target: $(M68K_STAMPS)/automake
-	$(MKDIR) $(M68K_PREFIX)/bin $(M68K_PREFIX)/etc $(M68K_PREFIX)/$(M68K_TARGET)/bin $(M68K_PREFIX)/$(M68K_TARGET)/ndk/include/inline $(M68K_PREFIX)/$(M68K_TARGET)/ndk/include/lvo $(M68K_PREFIX)/$(M68K_TARGET)/ndk/lib/fd $(M68K_PREFIX)/$(M68K_TARGET)/ndk/lib/sfd
-	$(TOUCH) $@
-
-$(M68K_STAMPS)/vasm: $(M68K_ARCHIVES)/.downloaded
-	$(call unpack,$(M68K_VASM).tar.gz,$(M68K_BUILD),vasm)
-	cd $(M68K_BUILD)/vasm && $(MAKE) CPU=m68k SYNTAX=mot
-	$(MKDIR) $(M68K_PREFIX)/bin
-	$(CP) $(M68K_BUILD)/vasm/vasmm68k_mot $(M68K_PREFIX)/bin/
-	$(CP) $(M68K_BUILD)/vasm/vobjdump $(M68K_PREFIX)/bin/
-	$(TOUCH) $@
-
-$(M68K_STAMPS)/vlink: $(M68K_ARCHIVES)/.downloaded
-	$(call unpack,$(M68K_VLINK).tar.gz,$(M68K_BUILD),vlink)
-	$(MKDIR) $(M68K_BUILD)/vlink/objects
-	cd $(M68K_BUILD)/vlink && $(MAKE)
-	$(MKDIR) $(M68K_PREFIX)/bin
-	$(CP) $(M68K_BUILD)/vlink/vlink $(M68K_PREFIX)/bin/
-	$(TOUCH) $@
-
-$(M68K_STAMPS)/vbcc: $(M68K_ARCHIVES)/.downloaded
-	$(call unpack,$(M68K_VBCC_BIN).lha,$(M68K_ARCHIVES),vbcc)
-	$(call unpack,$(M68K_VBCC_TARGET).lha,$(M68K_ARCHIVES),vbcc_target)
-	$(MKDIR) $(M68K_PREFIX)/bin $(M68K_PREFIX)/$(M68K_TARGET)/vbcc
-	$(CP) $(M68K_ARCHIVES)/vbcc/* $(M68K_PREFIX)/bin/
-	$(CP) $(M68K_ARCHIVES)/vbcc_target/* $(M68K_PREFIX)/$(M68K_TARGET)/vbcc/
-	$(TOUCH) $@
-
-$(M68K_STAMPS)/vbcc-install: $(M68K_STAMPS)/vasm $(M68K_STAMPS)/vlink $(M68K_STAMPS)/vbcc
-	$(MKDIR) $(M68K_PREFIX)/etc $(M68K_PREFIX)/$(M68K_TARGET)/vbcc/lib
-	echo -e "#!/bin/bash\n$(M68K_PREFIX)/bin/vasmm68k_mot -I$(M68K_PREFIX)/$(M68K_TARGET)/ndk/include \"$$@\"" > $(M68K_PREFIX)/bin/vasm
-	$(CHMOD) 755 $(M68K_PREFIX)/bin/vasm
-	echo -e "-cc=$(M68K_PREFIX)/bin/vbccm68k -hunkdebug %s -o= %s %s -O=%ld -quiet -I$(M68K_PREFIX)/$(M68K_TARGET)/vbcc/include -I$(M68K_PREFIX)/$(M68K_TARGET)/ndk/include\n-ccv=$(M68K_PREFIX)/bin/vbccm68k -hunkdebug %s -o= %s %s -O=%ld -I$(M68K_PREFIX)/$(M68K_TARGET)/vbcc/include -I$(M68K_PREFIX)/$(M68K_TARGET)/ndk/include\n-as=$(M68K_PREFIX)/bin/vasmm68k_mot -Fhunk -phxass -opt-fconst -nowarn=62 -quiet -I$(M68K_PREFIX)/$(M68K_TARGET)/ndk/include %s -o %s\n-asv=$(M68K_PREFIX)/bin/vasmm68k_mot -Fhunk -phxass -opt-fconst -nowarn=62 -I$(M68K_PREFIX)/$(M68K_TARGET)/ndk/include %s -o %s\n-rm=rm %s\n-rmv=rm -v %s\n-ld=$(M68K_PREFIX)/bin/vlink -bamigahunk -x -Bstatic -Cvbcc -nostdlib $(M68K_PREFIX)/$(M68K_TARGET)/vbcc/lib/startup.o %s %s -L$(M68K_PREFIX)/$(M68K_TARGET)/vbcc/lib -lvc -o %s\n-l2=$(M68K_PREFIX)/bin/vlink -bamigahunk -x -Bstatic -Cvbcc -nostdlib %s %s -L$(M68K_PREFIX)/$(M68K_TARGET)/vbcc/lib -o %s\n-ldv=$(M68K_PREFIX)/bin/vlink -bamigahunk -t -x -Bstatic -Cvbcc -nostdlib $(M68K_PREFIX)/$(M68K_TARGET)/vbcc/lib/startup.o %s %s -L$(M68K_PREFIX)/$(M68K_TARGET)/vbcc/lib -lvc -o %s\n-l2v=$(M68K_PREFIX)/bin/vlink -bamigahunk -t -x -Bstatic -Cvbcc -nostdlib %s %s -L$(M68K_PREFIX)/$(M68K_TARGET)/vbcc/lib -o %s\n-ldnodb=-s -Rshort\n-ul=-l%s\n-cf=-F%s\n-ml=500" > $(M68K_PREFIX)/etc/vc.config
-	$(CHMOD) 644 $(M68K_PREFIX)/etc/vc.config
-	$(TOUCH) $@
-
-$(M68K_STAMPS)/fd2sfd: $(M68K_STAMPS)/target $(SUBMODULES)/.stamp
-	$(MKDIR) $(M68K_BUILD)/fd2sfd
-	$(CP) $(SUBMODULES)/fd2sfd/* $(M68K_BUILD)/fd2sfd/
-	cd $(M68K_BUILD)/fd2sfd && ./configure --prefix=$(M68K_PREFIX) && $(MAKE) && $(CP) fd2sfd $(M68K_PREFIX)/bin/ && $(CP) cross/share/$(M68K_TARGET)/alib.h $(M68K_PREFIX)/$(M68K_TARGET)/ndk/include/inline/
-	$(TOUCH) $@
-
-$(M68K_STAMPS)/fd2pragma: $(M68K_STAMPS)/target $(SUBMODULES)/.stamp
-	$(MKDIR) $(M68K_BUILD)/fd2pragma
-	$(CP) $(SUBMODULES)/fd2pragma/* $(M68K_BUILD)/fd2pragma/
-	cd $(M68K_BUILD)/fd2pragma && ./configure --prefix=$(M68K_PREFIX) && $(MAKE) && $(CP) fd2pragma $(M68K_PREFIX)/bin/ && $(CP) Include/inline/macros.h Include/inline/stubs.h $(M68K_PREFIX)/$(M68K_TARGET)/ndk/include/inline/
-	$(TOUCH) $@
-
-$(M68K_STAMPS)/sfdc: $(M68K_STAMPS)/target $(SUBMODULES)/.stamp
-	$(MKDIR) $(M68K_BUILD)/sfdc
-	$(CP) $(SUBMODULES)/sfdc/* $(M68K_BUILD)/sfdc/
-	cd $(M68K_BUILD)/sfdc && ./configure --prefix=$(M68K_PREFIX) && $(MAKE) && $(MAKE) install
-	$(TOUCH) $@
-
-$(M68K_STAMPS)/ndk: $(M68K_ARCHIVES)/.downloaded
-	$(call unpack,$(M68K_NDK).lha,$(M68K_ARCHIVES),NDK_3.2)
-	$(MKDIR) $(M68K_PREFIX)/$(M68K_TARGET)/ndk/include $(M68K_PREFIX)/$(M68K_TARGET)/ndk/lib $(M68K_PREFIX)/$(M68K_TARGET)/ndk/doc
-	$(CP) $(M68K_ARCHIVES)/NDK_3.2/Include/include_h/* $(M68K_PREFIX)/$(M68K_TARGET)/ndk/include/
-	$(CP) $(M68K_ARCHIVES)/NDK_3.2/Include/include_i/* $(M68K_PREFIX)/$(M68K_TARGET)/ndk/include/
-	$(CP) $(M68K_ARCHIVES)/NDK_3.2/Include/fd/* $(M68K_PREFIX)/$(M68K_TARGET)/ndk/lib/fd/
-	$(CP) $(M68K_ARCHIVES)/NDK_3.2/Include/sfd/* $(M68K_PREFIX)/$(M68K_TARGET)/ndk/lib/sfd/
-	$(CP) $(M68K_ARCHIVES)/NDK_3.2/Include/linker_libs/libamiga.a $(M68K_PREFIX)/$(M68K_TARGET)/ndk/lib/
-	$(CP) $(M68K_ARCHIVES)/NDK_3.2/Include/linker_libs/libm.a $(M68K_PREFIX)/$(M68K_TARGET)/ndk/lib/
-	$(CP) $(M68K_ARCHIVES)/NDK_3.2/Documentation/Autodocs/* $(M68K_PREFIX)/$(M68K_TARGET)/ndk/doc/
-	$(TOUCH) $@
-
-$(M68K_STAMPS)/ixemul: $(M68K_ARCHIVES)/.downloaded
-	$(call build_autotools,ixemul,$(M68K_ARCHIVES)/ixemul,--prefix=$(M68K_PREFIX)/$(M68K_TARGET)/libnix,$(M68K_STAMPS))
-
-$(M68K_STAMPS)/libnix: $(M68K_STAMPS)/vbcc-install $(SUBMODULES)/.stamp
-	$(MKDIR) $(M68K_BUILD)/libnix
-	$(CP) $(SUBMODULES)/libnix/* $(M68K_BUILD)/libnix/
-	cd $(M68K_BUILD)/libnix && ./configure --prefix=$(M68K_PREFIX)/$(M68K_TARGET)/libnix && $(MAKE) && $(MAKE) install
-	$(CP) $(SUBMODULES)/libnix/sources/headers/stabs.h $(M68K_PREFIX)/$(M68K_TARGET)/libnix/include/
-	$(TOUCH) $@
-
-$(M68K_STAMPS)/libdebug: $(M68K_STAMPS)/vbcc-install $(SUBMODULES)/.stamp
-	$(MKDIR) $(M68K_BUILD)/libdebug
-	$(CP) $(SUBMODULES)/libdebug/* $(M68K_BUILD)/libdebug/
-	cd $(M68K_BUILD)/libdebug && ./configure --prefix=$(M68K_PREFIX) && $(MAKE) && $(MAKE) install
-	$(TOUCH) $@
-
-$(M68K_STAMPS)/clib2: $(M68K_STAMPS)/vbcc-install $(SUBMODULES)/.stamp
-	$(MKDIR) $(M68K_BUILD)/clib2
-	$(CP) $(SUBMODULES)/clib2/* $(M68K_BUILD)/clib2/
-	cd $(M68K_BUILD)/clib2 && $(MAKE) -f GNUmakefile.68k
-	$(MKDIR) $(M68K_PREFIX)/$(M68K_TARGET)/clib2
-	$(CP) $(M68K_BUILD)/clib2/lib/* $(M68K_PREFIX)/$(M68K_TARGET)/clib2/lib/
-	$(CP) $(M68K_BUILD)/clib2/include/* $(M68K_PREFIX)/$(M68K_TARGET)/clib2/include/
-	$(TOUCH) $@
-
-$(M68K_STAMPS)/toolchain: $(addprefix $(M68K_STAMPS)/,$(M68K_COMPONENTS))
-	$(TOUCH) $@
-
-m68k: $(M68K_STAMPS)/toolchain | check_headers $(SUBMODULES)/.stamp
-	@echo "M68K toolchain build completed."
-
-help: check_tools check_archive_tool
-	@echo "=== AmigaOS Cross-Compilation Toolchain Help ==="
-	@echo "This Makefile builds cross-compilation toolchains for PPC and M68K AmigaOS platforms."
-	@echo "The PREFIX is an absolute path, defaulting to $(TOP)/install."
-	@echo "STAMPS directory tracks build progress to avoid redundant operations."
-	@case $(OS) in \
-		Linux) \
-			echo "=== Linux Requirements ==="; \
-			echo "Please install: sudo apt-get install gcc g++ curl patch bison flex make subversion git perl gperf yacc tar help2man autopoint p7zip lhasa libncurses-dev"; \
-			;; \
-		Darwin) \
-			echo "=== macOS Requirements ==="; \
-			echo "Please install: brew install gcc g++ curl patch bison flex make subversion git perl gperf yacc tar help2man autopoint p7zip ncurses"; \
-			;; \
-		Windows_NT) \
-			echo "=== Windows Requirements ==="; \
-			echo "Please install: choco install gcc g++ curl patch bison flex make subversion git perl gperf yacc tar help2man autopoint 7zip"; \
-			;; \
-	esac
-	@echo "=== Available Make Commands ==="
-	@echo "make all		 - Build both PPC and M68K toolchains."
-	@echo "make			 - Same as 'make all'."
-	@echo "make ppc		 - Build PPC toolchain (requires $(PPC_SDK).lha, $(PPC_VBCC_BIN).lha, $(PPC_VBCC_TARGET).lha in $(DOWNLOADS)/ppc/)."
-	@echo "make m68k		- Build M68K toolchain (requires $(M68K_NDK).lha, $(M68K_VBCC_BIN).lha, $(M68K_VBCC_TARGET).lha in $(DOWNLOADS)/m68k/)."
-	@echo "make clean	   - Remove build and install directories."
-	@echo "make clean-download - Empty the downloads directory."
-	@echo "make help		- Display this help message."
-	@echo "=== PPC vs M68K ==="
-	@echo "PPC: Targets AmigaOS 4.x (PowerPC), using GCC and vbcc."
-	@echo "M68K: Targets AmigaOS 3.x (Motorola 680x0), using vbcc."
-	@echo "=== URL Test ==="
-	@for url in $(PPC_URLS) $(M68K_URLS); do \
-		url=$$(echo "$$url" | sed 's/=.*//'); \
-		if $(CURL) -s --head "$$url" >/dev/null 2>&1; then \
-			echo "URL test passed: $$url"; \
-		else \
-			echo "URL test failed: $$url"; \
+# Download rules
+define download_rule
+$(1)/%.$(2): | $(1)
+	@for pkg in $(URLS); do \
+		name=$$(echo "$$pkg" | cut -d'=' -f1); \
+		url=$$(echo "$$pkg" | cut -d'=' -f3); \
+		target=$$(echo "$$pkg" | cut -d'=' -f4); \
+		platform=$$(echo "$$pkg" | cut -d'=' -f5); \
+		if [ "$$target" = "$(notdir $@)" ] && [ "$$platform" = "$(3)" ]; then \
+			[ -f "$(1)/$$target" ] && echo "$$target exists in $(1)" || \
+			(echo "Downloading $$url" && $(CURL) -L -f -o "$(1)/$$target" "$$url" || { echo "ERROR: Failed to download $$url"; exit 2; }); \
+			break; \
 		fi; \
 	done
-# This Makefile builds cross-compilation toolchains for PPC and M68K AmigaOS
+endef
+$(eval $(call download_rule,$(DOWNLOADS),tar.gz,common))
+$(eval $(call download_rule,$(DOWNLOADS),tar.bz2,common))
+$(eval $(call download_rule,$(DOWNLOADS),tar.xz,common))
+$(eval $(call download_rule,$(PPC_DOWNLOADS),lha,ppc))
+$(eval $(call download_rule,$(M68K_DOWNLOADS),lha,m68k))
+$(eval $(call download_rule,$(M68K_DOWNLOADS),tar.gz,m68k))
+
+$(DOWNLOADS)/%.git: | $(DOWNLOADS)
+	@for pkg in $(URLS); do \
+		name=$$(echo "$$pkg" | cut -d'=' -f1); \
+		version=$$(echo "$$pkg" | cut -d'=' -f2); \
+		url=$$(echo "$$pkg" | cut -d'=' -f3); \
+		target=$$(echo "$$pkg" | cut -d'=' -f4); \
+		if [ "$$version" = "git" ] && [ "$$target" = "$(notdir $@)" ]; then \
+			[ -d "$(DOWNLOADS)/$$target" ] && echo "$$target exists in $(DOWNLOADS)" || \
+			(echo "Cloning $$url" && $(GIT) clone "$$url" "$(DOWNLOADS)/$$target" || { echo "ERROR: Failed to clone $$url"; exit 2; }); \
+			break; \
+		fi; \
+	done
+
+$(PPC_DOWNLOADS)/.downloaded: $(addprefix $(DOWNLOADS)/,$(filter-out %.git %.lha,$(foreach pkg,$(filter %=common %=ppc,$(URLS)),$(word 4,$(subst =, ,$(pkg)))))) $(addprefix $(PPC_DOWNLOADS)/,$(filter %.lha,$(foreach pkg,$(filter %=ppc,$(URLS)),$(word 4,$(subst =, ,$(pkg)))))) $(addprefix $(DOWNLOADS)/,$(filter %.git,$(foreach pkg,$(filter %=common %=ppc,$(URLS)),$(word 4,$(subst =, ,$(pkg)))))) | $(PPC_DOWNLOADS)
+	$(call download,$(filter %=common %=ppc,$(URLS)),$(PPC_DOWNLOADS))
+
+$(M68K_DOWNLOADS)/.downloaded: $(addprefix $(DOWNLOADS)/,$(filter-out %.git %.lha,$(foreach pkg,$(filter %=common %=m68k,$(URLS)),$(word 4,$(subst =, ,$(pkg)))))) $(addprefix $(M68K_DOWNLOADS)/,$(foreach pkg,$(filter %=m68k,$(URLS)),$(word 4,$(subst =, ,$(pkg))))) $(addprefix $(DOWNLOADS)/,$(filter %.git,$(foreach pkg,$(filter %=common %=m68k,$(URLS)),$(word 4,$(subst =, ,$(pkg)))))) | $(M68K_DOWNLOADS)
+	$(call download,$(filter %=common %=m68k,$(URLS)),$(M68K_DOWNLOADS))
+
+$(DOWNLOADS)/.downloaded: $(PPC_DOWNLOADS)/.downloaded $(M68K_DOWNLOADS)/.downloaded | $(DOWNLOADS)
+	$(call download,$(filter %=common,$(URLS)),$(DOWNLOADS))
+	$(TOUCH) $@
+
+# Autotools component rule
+define autotools_rule
+$(1)_STAMPS/$2: $(addprefix $(1)_STAMPS/,$(DEPENDS[$2])) $(DOWNLOADS)/$2-$(VERSIONS[$2]).tar.$(if $(filter bison gawk libogg libsndfile libtheora libtool libvorbis m4 mpfr texinfo zlib,$(2)),xz,gz) | $(1)_BUILD
+	$(call unpack,$2-$(VERSIONS[$2]).tar.$(if $(filter bison gawk libogg libsndfile libtheora libtool libvorbis m4 mpfr texinfo zlib,$(2)),xz,gz),$2-$(VERSIONS[$2]),$($(1)_BUILD))
+	$(call build_autotools,$2,$($(1)_BUILD)/$2-$(VERSIONS[$2]),$(CONFIG_FLAGS[$2]),$($(1)_STAMPS))
+endef
+$(foreach comp,autoconf automake bison cloog flex gawk gmp isl libtool m4 mpc mpfr texinfo,$(eval $(call autotools_rule,PPC,$(comp))))
+$(foreach comp,autoconf bison flex gawk m4,$(eval $(call autotools_rule,M68K,$(comp))))
+
+# PPC Custom Rules
+define ppc_rule
+$(PPC_STAMPS)/$1: $(addprefix $(PPC_STAMPS)/,$(DEPENDS[$1])) $(if $(filter binutils clib2 newlib,$1),$(DOWNLOADS)/$1.git,$(if $(filter vbcc,$1),$(PPC_DOWNLOADS)/.downloaded $(PPC_DOWNLOADS)/$(PPC_VBCC)_bin_amigaosppc.lha $(PPC_DOWNLOADS)/$(PPC_VBCC)_target_ppc-amigaos.lha,$(DOWNLOADS)/$1-$(VERSIONS[$1]).tar.$(if $(filter gcc-ppc,$1),gz,xz))) | $(PPC_BUILD)
+	$(MKDIR) $(PPC_BUILD)/$1
+	$(if $(filter binutils clib2 newlib,$1),$(CP) $(DOWNLOADS)/$1/* $(PPC_BUILD)/$1/,$(if $(filter vbcc,$1),$(call unpack,$(PPC_VBCC)_bin_amigaosppc.lha,vbcc,$(PPC_BUILD),ppc); $(call unpack,$(PPC_VBCC)_target_ppc-amigaos.lha,vbcc-target,$(PPC_BUILD),ppc); $(MKDIR) $(PPC_PREFIX)/{bin,vbcc}; $(CP) $(PPC_BUILD)/vbcc/* $(PPC_PREFIX)/bin/; $(CP) $(PPC_BUILD)/vbcc-target/* $(PPC_PREFIX)/vbcc/,$(call unpack,$1-$(VERSIONS[$1]).tar.$(if $(filter gcc-ppc,$1),gz,xz),$1-$(VERSIONS[$1]),$(PPC_BUILD))))
+	$(if $(filter binutils,$1),cd $(PPC_BUILD)/$1 && ./configure --prefix=$(PPC_PREFIX) --target=$(PPC_TARGET) --disable-nls && $(MAKE) YACC=$(BISON) && $(MAKE) install)
+	$(if $(filter gcc-ppc,$1),cd $(PPC_BUILD)/$1-$(VERSIONS[$1]) && CFLAGS="$(CFLAGS)" CC=$(CC) CXX=$(CXX) ./configure --prefix=$(PPC_PREFIX) --target=$(PPC_TARGET) --with-gmp=$(HOST) --with-mpfr=$(HOST) --with-mpc=$(HOST) --with-isl=$(HOST) --with-cloog=$(HOST) --enable-languages=c,c++ --enable-haifa --enable-sjlj-exceptions --disable-libstdcxx-pch --disable-tls --disable-nls && $(MAKE) && $(MAKE) install)
+	$(if $(filter clib2,$1),cd $(PPC_BUILD)/$1 && $(MAKE) -f GNUmakefile.os4; $(MKDIR) $(PPC_PREFIX)/clib2; $(CP) $(PPC_BUILD)/$1/lib/* $(PPC_PREFIX)/clib2/lib/; $(CP) $(PPC_BUILD)/$1/include/* $(PPC_PREFIX)/clib2/include/)
+	$(if $(filter newlib,$1),cd $(PPC_BUILD)/$1 && ./configure --prefix=$(PPC_PREFIX) --target=$(PPC_TARGET) && $(MAKE) && $(MAKE) install)
+	$(TOUCH) $@
+endef
+$(foreach comp,binutils gcc-ppc vbcc clib2 newlib,$(eval $(call ppc_rule,$(comp))))
+
+# M68K Custom Rules
+define m68k_rule
+$(M68K_STAMPS)/$1: $(addprefix $(M68K_STAMPS)/,$(DEPENDS[$1])) $(if $(filter fd2pragma fd2sfd ixemul libdebug libnix sfdc clib2,$1),$(DOWNLOADS)/$1.git,$(if $(filter vbcc,$1),$(M68K_DOWNLOADS)/.downloaded $(M68K_DOWNLOADS)/$(M68K_VBCC)_bin_amigaos68k.lha $(M68K_DOWNLOADS)/$(M68K_VBCC)_target_m68k-amigaos.lha,$(if $(filter vasm vlink,$1),$(M68K_DOWNLOADS)/.downloaded $(M68K_DOWNLOADS)/$(M68K_$(shell echo $1 | tr '[:lower:]' '[:upper:]')).tar.gz,$(if $(filter ndk,$1),$(M68K_DOWNLOADS)/.downloaded $(M68K_DOWNLOADS)/$(M68K_NDK).lha,$(DOWNLOADS)/$1-$(VERSIONS[$1]).tar.$(if $(filter gcc-m68k,$1),bz2,gz)))))) | $(M68K_BUILD)
+	$(MKDIR) $(M68K_BUILD)/$1
+	$(if $(filter fd2pragma fd2sfd ixemul libdebug libnix sfdc clib2,$1),$(CP) $(DOWNLOADS)/$1/* $(M68K_BUILD)/$1/,$(if $(filter vbcc,$1),$(call unpack,$(M68K_VBCC)_bin_amigaos68k.lha,vbcc,$(M68K_BUILD),m68k); $(call unpack,$(M68K_VBCC)_target_m68k-amigaos.lha,vbcc-target,$(M68K_BUILD),m68k); $(MKDIR) $(M68K_PREFIX)/{bin,vbcc}; $(CP) $(M68K_BUILD)/vbcc/* $(M68K_PREFIX)/bin/; $(CP) $(M68K_BUILD)/vbcc-target/* $(M68K_PREFIX)/vbcc/,$(if $(filter vasm vlink,$1),$(call unpack,$(M68K_$(shell echo $1 | tr '[:lower:]' '[:upper:]')).tar.gz,$1,$(M68K_BUILD),m68k),$(if $(filter ndk,$1),$(call unpack,$(M68K_NDK).lha,NDK_$(VERSIONS[ndk]),$(M68K_BUILD),m68k),$(call unpack,$1-$(VERSIONS[$1]).tar.$(if $(filter gcc-m68k,$1),bz2,gz),$1-$(VERSIONS[$1]),$(M68K_BUILD))))))
+	$(if $(filter vasm,$1),$(MKDIR) $(M68K_BUILD)/$1/objects; cd $(M68K_BUILD)/$1 && $(MAKE) CPU=m68k SYNTAX=mot; $(MKDIR) $(M68K_PREFIX)/bin; $(CP) $(M68K_BUILD)/$1/vasmm68k_mot $(M68K_PREFIX)/bin/; $(CP) $(M68K_BUILD)/$1/vobjdump $(M68K_PREFIX)/bin/)
+	$(if $(filter vlink,$1),$(MKDIR) $(M68K_BUILD)/$1/objects; cd $(M68K_BUILD)/$1 && $(MAKE); $(MKDIR) $(M68K_PREFIX)/bin; $(CP) $(M68K_BUILD)/$1/vlink $(M68K_PREFIX)/bin/)
+	$(if $(filter fd2sfd,$1),cd $(M68K_BUILD)/$1 && ./configure --prefix=$(M68K_PREFIX) && $(MAKE); $(CP) $(M68K_BUILD)/$1/fd2sfd $(M68K_PREFIX)/bin/; $(CP) $(M68K_BUILD)/$1/cross/lib/share/alib.h $(M68K_PREFIX)/ndk/include/inline/)
+	$(if $(filter fd2pragma,$1),cd $(M68K_BUILD)/$1 && ./configure --prefix=$(M68K_PREFIX) && $(MAKE); $(CP) $(M68K_BUILD)/$1/fd2pragma $(M68K_PREFIX)/bin/; $(CP) $(M68K_BUILD)/$1/Include/inline/{macros,stubs}.h $(M68K_PREFIX)/ndk/include/inline/)
+	$(if $(filter sfdc,$1),cd $(M68K_BUILD)/$1 && ./configure --prefix=$(M68K_PREFIX) && $(MAKE) && $(MAKE) install)
+	$(if $(filter ixemul,$1),cd $(M68K_BUILD)/$1 && ./configure --prefix=$(M68K_PREFIX)/lib && $(MAKE) && $(MAKE) install)
+	$(if $(filter libnix,$1),cd $(M68K_BUILD)/$1 && ./configure --prefix=$(M68K_PREFIX) && $(MAKE) && $(MAKE) install; $(CP) $(M68K_BUILD)/$1/source/stabs.h $(M68K_PREFIX)/libnix/include/)
+	$(if $(filter libdebug,$1),cd $(M68K_BUILD)/$1 && ./configure --prefix=$(M68K_PREFIX) && $(MAKE) && $(MAKE) install)
+	$(if $(filter clib2,$1),cd $(M68K_BUILD)/$1 && $(MAKE) -f GNUmakefile.68k; $(MKDIR) $(M68K_PREFIX)/clib2/{lib,include}; $(CP) $(M68K_BUILD)/$1/lib/* $(M68K_PREFIX)/clib2/lib/; $(CP) $(M68K_BUILD)/$1/include/* $(M68K_PREFIX)/clib2/include/)
+	$(if $(filter binutils,$1),cd $(M68K_BUILD)/$1 && ./configure --prefix=$(M68K_PREFIX) --target=$(M68K_TARGET) --disable-nls && $(MAKE) YACC=$(BISON) && $(MAKE) install)
+	$(if $(filter gcc-m68k,$1),cd $(M68K_BUILD)/$1-$(VERSIONS[$1]) && CFLAGS="$(CFLAGS)" CC=$(CC) CXX=$(CXX) ./configure --prefix=$(M68K_PREFIX) --target=$(M68K_TARGET) --disable-nls && $(MAKE) && $(MAKE) install)
+	$(if $(filter ndk,$1),$(MKDIR) $(M68K_PREFIX)/ndk/{include,lib/{fd,sfd},doc}; $(CP) $(M68K_BUILD)/NDK_$(VERSIONS[ndk])/Include/include_{h,i}/* $(M68K_PREFIX)/ndk/include/; $(CP) $(M68K_BUILD)/NDK_$(VERSIONS[ndk])/Include/{fd,sfd}/* $(M68K_PREFIX)/ndk/lib/{fd,sfd}/; $(CP) $(M68K_BUILD)/NDK_$(VERSIONS[ndk])/Include/linker_libs/lib{amiga,m}.a $(M68K_PREFIX)/ndk/lib/; $(CP) $(M68K_BUILD)/NDK_$(VERSIONS[ndk])/Documentation/Autodocs/* $(M68K_PREFIX)/ndk/doc/)
+	$(if $(filter vbcc-install,$1),$(MKDIR) $(M68K_PREFIX)/{etc,lib}; echo "#!/bin/bash\n$(M68K_PREFIX)/bin/vasmm68k_mot -I$(M68K_PREFIX)/ndk/include \"\$$@\"" > $(M68K_PREFIX)/bin/vasm; $(CHMOD) 755 $(M68K_PREFIX)/bin/vasm; echo "-cc=$(M68K_PREFIX)/bin/vbccm68k -hunkdebug %s -o= %s %s -O=%ld -quiet -I$(M68K_PREFIX)/vbcc/include -I$(M68K_PREFIX)/ndk/include\n-ccv=$(M68K_PREFIX)/bin/vbccm68k -hunkdebug %s -o= %s %s -O=%ld -I$(M68K_PREFIX)/vbcc/include -I$(M68K_PREFIX)/ndk/include\n-as=$(M68K_PREFIX)/bin/vasmm68k_mot -Fhunk -phxass -opt-fconst -nowarn=62 -quiet -I$(M68K_PREFIX)/ndk/include %s -o %s\n-asv=$(M68K_PREFIX)/bin/vasmm68k_amiga -Fhunk -phxass -opt-fconst -nowarn=62 -I$(M68K_PREFIX)/ndk/include %s -o %s\n-rm=rm %s\n-rmv=rm -v %s\n-ld=$(M68K_PREFIX)/bin/vlink -bamigahunk -x -Bstatic -Cvbcc -nostdlib $(M68K_PREFIX)/vbcc/lib/startup.o %s %s -L$(M68K_PREFIX)/vbcc/lib -lvc -o %s\n-l2=$(M68K_PREFIX)/bin/vlink -bamigahunk -x -Bstatic -Cvbcc -nostdlib %s %s -L$(M68K_PREFIX)/vbcc/lib -o %s\n-ldv=$(M68K_PREFIX)/bin/vlink -bamigahunk -t -x -Bstatic -Cvbcc -nostdlib $(M68K_PREFIX)/vbcc/lib/startup.o %s %s -L$(M68K_PREFIX)/vbcc/lib -lvc -o %s\n-l2v=$(M68K_PREFIX)/bin/vlink -bamigahunk -t -x -Bstatic -Cvbcc -nostdlib %s %s -L$(M68K_PREFIX)/vbcc/lib -o %s\n-ldnodb=-s -Rshort\n-ul=-l%s\n$(M68K) = -f%s\n-ml=500" > $(M68K_PREFIX)/etc/vc.config; $(CHMOD) 644 $(M68K_PREFIX)/etc/vc.config)
+	$(TOUCH) $@
+endef
+$(foreach comp,vasm vlink vbcc binutils gcc-m68k fd2sfd2sfd ffd2pragma sfdc ndk ixemul libnix libdebug clib2 vbcc-install,$(eval $(call m68k_rule,$(comp))))
+
+ppc: $(addprefix $(PPC_STAMPS)/,$(PPC_COMPONENTS)) | check_headers
+	@echo "PPC toolchain build completed successfully."
+
+m68k: $(addprefix $(M68K_STAMPS)/,$(M68K_COMPONENTS)) | check_headers
+	@echo "M68K toolchain build completed successfully."
+
+help: check_tools
+	@echo "=== AmigaOS Cross-Compilation Toolchain ==="
+	@echo "Copyright (c) 2025 Zachary Geurts, MIT License"
+	@echo "Builds toolchains for PPC (AmigaOS 4.x) and M68K (AmigaOS 3.x)."
+	@echo "Host: $(OS_NAME) $(OS_SUBTYPE)"
+	@echo "Prefix: $(TOP)$(PATHSEP)install"
+	@echo "Memory Requirements:"
+	@echo "  PPC Toolchain: ~1490 MB (build), ~599 MB (installed)"
+	@echo "  M68K Toolchain: ~1148 MB (build), ~457 MB (installed)"
+	@echo "=== PPC SDK Notes ==="
+	@echo "  Download PPC SDK (SDK_ppc.lha) from https://www.hyperion-entertainment.com/"
+	@echo "  Place at $(PPC_DOWNLOADS)$(PATHSEP)$(PPC_SDK).lha"
+	@if [ -f "$(PPC_DOWNLOADS)$(PATHSEP)$(PPC_SDK).lha" ]; then \
+		echo "  Found $(PPC_SDK).lha in $(PPC_DOWNLOADS)"; \
+	else \
+		echo "  WARNING: $(PPC_SDK).lha not found in $(PPC_DOWNLOADS). Download and place it there to build PPC toolchain."; \
+	fi
+	@echo "=== Networking Notes ==="
+	@echo "  PPC: Roadshow TCP/IP stack required for git (available via OS4Depot)."
+	@echo "  M68K: Roadshow or Miami TCP/IP stack required for git (available via Aminet)."
+	@echo "=== Local Files ==="
+	@total=0; downloads=0; ppc_downloads=0; m68k_downloads=0; build=0; ppc_build=0; m68k_build=0; git=0; \
+	found_files=""; found_git=""; \
+	for pkg in $(URLS); do \
+		name=$$(echo "$$pkg" | cut -d'=' -f1); \
+		version=$$(echo "$$pkg" | cut -d'=' -f2); \
+		target=$$(echo "$$pkg" | cut -d'=' -f4); \
+		platform=$$(echo "$$pkg" | cut -d'=' -f5); \
+		dir=$$([ "$$platform" = "ppc" ] && echo "$(PPC_DOWNLOADS)" || [ "$$platform" = "m68k" ] && echo "$(M68K_DOWNLOADS)" || echo "$(DOWNLOADS)"); \
+		bdir=$$([ "$$platform" = "ppc" ] && echo "$(PPC_BUILD)" || [ "$$platform" = "m68k" ] && echo "$(M68K_BUILD)" || echo "$(BUILD)"); \
+		if [ "$$version" = "git" ]; then \
+			if [ -d "$$dir/$$target" ]; then \
+				found_git="$$found_git\n  Git: $$target (in $$dir)"; git=$$((git+1)); total=$$((total+1)); \
+			elif [ -d "$$bdir/$$target" ]; then \
+				found_git="$$found_git\n  Git: $$target (in $$bdir)"; git=$$((git+1)); total=$$((total+1)); \
+			fi; \
+		else \
+			if [ -f "$$dir/$$target" ]; then \
+				found_files="$$found_files\n  File: $$target (in $$dir)"; \
+				case "$$platform" in \
+					ppc) ppc_downloads=$$((ppc_downloads+1));; \
+					m68k) m68k_downloads=$$((m68k_downloads+1));; \
+					*) downloads=$$((downloads+1));; \
+				esac; total=$$((total+1)); \
+			elif [ -d "$$bdir/$$target-$(VERSIONS[$$name])" ] || [ -d "$$bdir/$$target" ]; then \
+				found_files="$$found_files\n  File: $$target (extracted in $$bdir)"; \
+				case "$$platform" in \
+					ppc) ppc_build=$$((ppc_build+1));; \
+					m68k) m68k_build=$$((m68k_build+1));; \
+					*) build=$$((build+1));; \
+				esac; total=$$((total+1)); \
+			fi; \
+		fi; \
+	done; \
+	if [ -f "$(PPC_DOWNLOADS)$(PATHSEP)$(PPC_SDK).lha" ]; then \
+		found_files="$$found_files\n  File: $(PPC_SDK).lha (in $(PPC_DOWNLOADS))"; ppc_downloads=$$((ppc_downloads+1)); total=$$((total+1)); \
+	fi; \
+	if [ -f "$(M68K_DOWNLOADS)$(PATHSEP)$(M68K_NDK).lha" ]; then \
+		found_files="$$found_files\n  File: $(M68K_NDK).lha (in $(M68K_DOWNLOADS))"; m68k_downloads=$$((m68k_downloads+1)); total=$$((total+1)); \
+	fi; \
+	if [ -n "$$found_files" ]; then \
+		echo -e "$$found_files" | sort; \
+	else \
+		echo "  No archive files found in downloads or build directories."; \
+	fi; \
+	if [ -n "$$found_git" ]; then \
+		echo -e "$$found_git" | sort; \
+	else \
+		echo "  No git repositories found in downloads or build directories."; \
+	fi; \
+	echo "Summary: downloads=$$downloads, ppc_downloads=$$ppc_downloads, m68k_downloads=$$m68k_downloads, build=$$build, ppc_build=$$ppc_build, m68k_build=$$m68k_build, git=$$git, total=$$total"
+	@echo "=== URL Status for Missing Files ==="
+	@checked=0; up=0; down=0; \
+	for pkg in $(URLS); do \
+		name=$$(echo "$$pkg" | cut -d'=' -f1); \
+		version=$$(echo "$$pkg" | cut -d'=' -f2); \
+		url=$$(echo "$$pkg" | cut -d'=' -f3); \
+		target=$$(echo "$$pkg" | cut -d'=' -f4); \
+		platform=$$(echo "$$pkg" | cut -d'=' -f5); \
+		dir=$$([ "$$platform" = "ppc" ] && echo "$(PPC_DOWNLOADS)" || [ "$$platform" = "m68k" ] && echo "$(M68K_DOWNLOADS)" || echo "$(DOWNLOADS)"); \
+		bdir=$$([ "$$platform" = "ppc" ] && echo "$(PPC_BUILD)" || [ "$$platform" = "m68k" ] && echo "$(M68K_BUILD)" || echo "$(BUILD)"); \
+		check=1; \
+		[ "$$version" = "git" ] && { [ -d "$$dir/$$target" ] || [ -d "$$bdir/$$target" ]; } && check=0; \
+		[ "$$version" != "git" ] && { [ -f "$$dir/$$target" ] || [ -d "$$bdir/$$target-$(VERSIONS[$$name])" ] || [ -d "$$bdir/$$target" ]; } && check=0; \
+		if [ "$$check" = "1" ]; then \
+			checked=$$((checked+1)); \
+			if $(CURL) -s --head "$$url" >/dev/null; then \
+				echo "  Up: $$url (for $$target)"; up=$$((up+1)); \
+			else \
+				echo "  Down: $$url (for $$target)"; down=$$((down+1)); \
+			fi; \
+		fi; \
+	done; \
+	[ "$$checked" = "0" ] && echo "  All required files found locally; no URLs checked."; \
+	echo "URL Summary: checked=$$checked, up=$$up, down=$$down"
+	@echo "=== Requirements ==="
+	@if [ "$(OS_NAME)" = "Linux" ]; then \
+		echo "Linux: sudo apt install -y gcc g++ curl patch bison flex make subversion git perl libgmp-dev libxml2-dev libmpc-dev libmpfr-dev zlib1g-dev libbz2-dev liblzma-dev autoconf automake autopoint patchutils pkgconf help2man m4 gawk tar gzip bzip2 xz-utils lhasa libncurses-dev"; \
+	elif [ "$(OS_NAME)" = "macOS" ]; then \
+		echo "macOS: brew install gcc g++ curl patch bison flex make subversion git perl pkg-config m4 gawk autoconf automake autoreconf tar xz bzip2 lha ncurses"; \
+	elif [ "$(OS_NAME)" = "Windows" ]; then \
+		echo "Windows: Install Chocolatey from https://chocolatey.org/install (Run PowerShell as Administrator: Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned; then: iwr https://chocolatey.org/install.ps1 -UseBasicParsing | iex)"; \
+		echo "After installing Chocolatey, run: choco install -y gcc g++ curl patch m4 gawk autoconf automake bison flex make subversion git perl gperf zip unzip lzip tar gzip bzip2 xz"; \
+		echo "Download lha from https://github.com/jca02266/lha/releases and add to PATH"; \
+	elif [ "$(OS_NAME)" = "AmigaOS" ] && [ "$(OS_SUBTYPE)" = "PPC" ]; then \
+		echo "AmigaOS PPC: Install GCC, Make, Bison, Flex, Curl, Git, Perl, and LhA from OS4Depot (http://os4depot.net)"; \
+		echo "Download SDK_ppc.lha from https://www.hyperion-entertainment.com/ and place in $(PPC_DOWNLOADS)"; \
+		echo "Install Roadshow TCP/IP stack from OS4Depot for git networking"; \
+		echo "Install additional libraries (gmp, mpfr, mpc, zlib, bzip2, xz) from OS4Depot or compile from source"; \
+	elif [ "$(OS_NAME)" = "AmigaOS" ] && [ "$(OS_SUBTYPE)" = "M68K" ]; then \
+		echo "AmigaOS M68K: Install gcc, make, bison, flex, and lha from Aminet (https://aminet.net)"; \
+		echo "Use vbcc (version $(VERSIONS[vbcc])) from http://phx.pl/ftp/vbcc/ for compilation"; \
+		echo "Download NDK$(VERSIONS[ndk]).lha from Aminet and place in $(M68K_DOWNLOADS)"; \
+		echo "Install Roadshow or Miami TCP/IP stack from Aminet for git networking"; \
+		echo "Note: Limited resources may require cross-compilation on a more powerful host"; \
+	else \
+		echo "Unknown OS: Install gcc, g++, curl, patch, bison, flex, make, subversion, git, perl, gperf, autoconf, automake, m4, gawk, tar, gzip, bzip2, xz, lha, and ncurses manually."; \
+		echo "Refer to Linux or AmigaOS requirements for guidance."; \
+	fi
+	@echo "=== Commands ==="
+	@echo "make ppc	 : Build PPC toolchain"
+	@echo "make m68k	: Build M68K toolchain"
+	@echo "make all	 : Build both PPC and M68K toolchains"
+	@echo "make clean	 : Remove build directories"
+	@echo "make clean-download : Clear downloaded files"
+	@echo "make help	:= This help message"
+	@echo "=== Next Steps ==="
+	@echo "Run 'make ppc' or 'make m68k' to build toolchains."
+	@echo "Ensure $(PPC_SDK).lha is in $(PPC_DOWNLOADS) for PPC builds."
+	@echo "For git, ensure TCP/IP stack (Roadshow/Miami) is installed on AmigaOS."
