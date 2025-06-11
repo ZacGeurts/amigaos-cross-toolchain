@@ -36,12 +36,12 @@ https://github.com/periscop/cloog/releases/download/cloog-0.18.0/cloog-0.18.0.ta
 fd2pragma - Latest from Git
 Latest commit is recommended for M68K, converting FD files to pragma
 headers for inline assembly
-https://github.com/cahirwpz/fd2pragma
+https://github.com/adtools/fd2pragma
 
 fd2sfd - Latest from Git
 Latest commit is recommended for M68K, converting FD files to SFD
 format for library interfaces
-https://github.com/cahirwpz/fd2sfd
+https://github.com/adtools/fd2sfd
 
 flex - 2.6.4
 Version 2.6.4 is the latest stable release and works for M68K,
