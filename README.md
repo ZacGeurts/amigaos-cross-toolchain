@@ -1,7 +1,8 @@
-### Down for repairs
-Down for repairs! AmigaOS cross compiler for Linux / MacOSX / Windows
-
-Go see the actual one at https://github.com/adtools/amigaos-cross-toolchain
+### Down for repairs<BR />
+Down for repairs! AmigaOS cross compiler for Linux / MacOSX / Windows<BR />
+<BR />
+### Go see the actual one at https://github.com/adtools/amigaos-cross-toolchain<BR />
+If you want my opinion, try the binary.<BR />
 ===
 
 What are we? Makefile. What else? The rest is the original.<BR />
