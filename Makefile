@@ -30,43 +30,58 @@ M68K_VASM := vasm_m68k
 M68K_VLINK := vlink_m68k
 
 # Latest versions
+M4_VERSION := 1.4.19
+AUTOCONF_VERSION := 2.71
+AUTOMAKE_VERSION := 1.16.5
+LIBTOOL_VERSION := 2.4.7
 TEXINFO_VERSION := 7.2
 GMP_VERSION := 6.3.0
+MPFR_VERSION := 4.2.1
+MPC_VERSION := 1.3.1
+ISL_VERSION := 0.26
+CLOOG_VERSION := 0.18.0
 GAWK_VERSION := 5.3.2
 BISON_VERSION := 3.8.2
-MPC_VERSION := 1.3.1
+FLEX_VERSION := 2.6.4
+VASM_VERSION := 1.8d
+VLINK_VERSION := 0.16a
+VBCC_VERSION := 0.9f
+NDK_VERSION := 3.2
+IXEMUL_VERSION := 48.2
 
 # Common URLs
 COMMON_URLS := \
-	https://github.com/amiga-gcc/binutils-gdb.git=binutils \
-	https://github.com/amiga-gcc/gcc.git=gcc \
-	https://github.com/autotools-mirror/m4.git=m4 \
-	https://github.com/autotools-mirror/autoconf.git=autoconf \
-	https://github.com/autotools-mirror/automake.git=automake \
-	https://github.com/autotools-mirror/libtool.git=libtool \
+	https://ftp.gnu.org/gnu/m4/m4-$(M4_VERSION).tar.gz=m4-$(M4_VERSION).tar.gz \
+	https://ftp.gnu.org/gnu/autoconf/autoconf-$(AUTOCONF_VERSION).tar.gz=autoconf-$(AUTOCONF_VERSION).tar.gz \
+	https://ftp.gnu.org/gnu/automake/automake-$(AUTOMAKE_VERSION).tar.gz=automake-$(AUTOMAKE_VERSION).tar.gz \
+	https://ftp.gnu.org/gnu/libtool/libtool-$(LIBTOOL_VERSION).tar.gz=libtool-$(LIBTOOL_VERSION).tar.gz \
 	https://ftp.gnu.org/gnu/texinfo/texinfo-$(TEXINFO_VERSION).tar.gz=texinfo-$(TEXINFO_VERSION).tar.gz \
+	https://gmplib.org/download/gmp/gmp-$(GMP_VERSION).tar.gz=gmp-$(GMP_VERSION).tar.gz \
+	https://www.mpfr.org/mpfr-$(MPFR_VERSION)/mpfr-$(MPFR_VERSION).tar.gz=mpfr-$(MPFR_VERSION).tar.gz \
+	https://ftp.gnu.org/gnu/mpc/mpc-$(MPC_VERSION).tar.gz=mpc-$(MPC_VERSION).tar.gz \
+	https://github.com/Meinersbur/isl/releases/download/isl-$(ISL_VERSION)/isl-$(ISL_VERSION).tar.gz=isl-$(ISL_VERSION).tar.gz \
+	https://github.com/periscop/cloog/releases/download/cloog-$(CLOOG_VERSION)/cloog-$(CLOOG_VERSION).tar.gz=cloog-$(CLOOG_VERSION).tar.gz \
 	https://ftp.gnu.org/gnu/gawk/gawk-$(GAWK_VERSION).tar.gz=gawk-$(GAWK_VERSION).tar.gz \
 	https://ftp.gnu.org/gnu/bison/bison-$(BISON_VERSION).tar.gz=bison-$(BISON_VERSION).tar.gz \
-	https://gmplib.org/download/gmp/gmp-$(GMP_VERSION).tar.gz=gmp-$(GMP_VERSION).tar.gz \
-	https://github.com/westes/flex.git=flex \
-	https://github.com/aixoss/mpfr.git=mpfr \
-	https://ftp.gnu.org/gnu/mpc/mpc-$(MPC_VERSION).tar.gz=mpc-$(MPC_VERSION).tar.gz \
-	https://github.com/Meinersbur/isl.git=isl \
-	https://github.com/periscop/cloog.git=cloog \
-	http://sun.hasenbraten.de/vasm/release/vasm.tar.gz=$(M68K_VASM).tar.gz \
-	http://sun.hasenbraten.de/vlink/release/vlink.tar.gz=$(M68K_VLINK).tar.gz
+	https://github.com/westes/flex/releases/download/v$(FLEX_VERSION)/flex-$(FLEX_VERSION).tar.gz=flex-$(FLEX_VERSION).tar.gz
 
 PPC_URLS := \
 	$(COMMON_URLS) \
-	https://aminet.net/dev/c/vbcc_bin_amigaosppc.lha=$(PPC_VBCC_BIN).lha \
+	https://github.com/amiga-gcc/binutils-gdb.git=binutils \
+	https://github.com/amiga-gcc/gcc.git=gcc \
+	https://aminet.net/dev/c/vbcc$(VBCC_VERSION)_bin_amigaosppc.lha=$(PPC_VBCC_BIN).lha \
 	https://aminet.net/dev/c/vbcc_target_ppc-amigaos.lha=$(PPC_VBCC_TARGET).lha
 
 M68K_URLS := \
 	$(COMMON_URLS) \
-	https://aminet.net/dev/misc/NDK3.2.lha=$(M68K_NDK).lha \
+	https://github.com/amiga-gcc/binutils-gdb.git=binutils \
+	https://github.com/amiga-gcc/gcc.git=gcc \
+	https://aminet.net/dev/misc/NDK$(NDK_VERSION).lha=$(M68K_NDK).lha \
 	https://github.com/amiga-gcc/ixemul.git=ixemul \
-	https://aminet.net/dev/c/vbcc_bin_amigaos68k.lha=$(M68K_VBCC_BIN).lha \
-	https://aminet.net/dev/c/vbcc_target_m68k-amiga.lha=$(M68K_VBCC_TARGET).lha
+	https://aminet.net/dev/c/vbcc$(VBCC_VERSION)_bin_amigaos68k.lha=$(M68K_VBCC_BIN).lha \
+	https://aminet.net/dev/c/vbcc_target_m68k-amiga.lha=$(M68K_VBCC_TARGET).lha \
+	http://server.owl.de/~frank/tags/vasm$(VASM_VERSION).tar.gz=$(M68K_VASM).tar.gz \
+	http://server.owl.de/~frank/tags/vlink$(VLINK_VERSION).tar.gz=$(M68K_VLINK).tar.gz
 
 CC := gcc
 CXX := g++
