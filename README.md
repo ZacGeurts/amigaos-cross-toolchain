@@ -11,8 +11,9 @@ These instructions I added are untested other than Linux.<BR />
 If you have problems then #1 is check your url downloads.<BR />
 Try `make help`<BR />
 Does the file still exist there? We scan for updated files for some tools.<BR />
+Just go download it and place it in the downloads folder. (does Makefile want tar.gz? Expecting a github folder? You either match or update the program)<BR />
 You can place expected files in the downloads folder manually.<BR />
-Github expects a folder, some expect tar.gz, .lha, etc. for sources.<BR />
+Github expects a folder, some expect tar.gz, .lha, etc.<BR />
 
 # Supports AmigaOS
 M68K: versions 1.0 through 3.9<BR />
