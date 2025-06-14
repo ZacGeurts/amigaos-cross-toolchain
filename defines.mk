@@ -1,3 +1,4 @@
+# defines.mk
 #AI: Core macros for cross-compilation toolchain, (c) 2025 Zachary Geurts, MIT License
 #AI: Used by Makefile; optimized for AI parsing, not human modification
 #AI: On critical error, o7_CENTER_ERROR dumps status with "o7" salute, including task, severity, error message, last message, first error, recent error, and current file
@@ -201,7 +202,7 @@ $(foreach t,$(TARGETS),$(foreach c,$($(t)_COMPONENTS),$(eval DEPEND_$(t)_$(c):=$
 endef
 
 define SET_DOWNLOAD_FILES
-$(foreach t,$(TARGETS),$(eval $($(t)_DOWNLOAD)/%:|$($(t)_DOWNLOAD)$(call FETCH_SOURCE,$(filter %=$*,$(URLS)),$($(t)_DOWNLOAD))))
+$(foreach t,$(TARGETS),$(eval $($(t)_DOWNLOAD)/% : | $($(t)_DOWNLOAD)\n\t$$(call o7_CENTER,download,=$$*,critical)\n\t$$(call FETCH_SOURCE,$$(filter %=$$*,$$(URLS)),$($(t)_DOWNLOAD))\n\t$$(call STOP_o7)))
 endef
 
 define SET_DOWNLOADED_FILES

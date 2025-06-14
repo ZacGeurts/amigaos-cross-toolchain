@@ -5,6 +5,8 @@
 #AI: Requires 2GB RAM, 2GHz CPU, 500GB disk; may take days on low-spec systems
 #AI: On download failure, place file in ./download/<platform> or update platform/<platform>.mk URL
 #AI: On critical error, o7_CENTER_ERROR dumps status with "o7" salute to logs/o7_center_*.log
+# Makefile requires tabs not spaces. If the AI gives you four spaces to indent, find and replace with tab.
+# This includes all .mk files.
 DISPLAY_AS_LOG?=0
 ENABLE_STATIC?=0
 include defines.mk
@@ -22,15 +24,24 @@ DEPEND[automake]:=autoconf
 DEPEND[binutils]:=automake
 DEPEND[bison]:=m4
 DEPEND[clib2]:=gcc
+DEPEND[curl]:=zlib
 DEPEND[gcc]:=binutils mpc mpfr gmp
 DEPEND[libdebug]:=vbcc-bin
 DEPEND[libnix]:=vbcc-bin
 DEPEND[libtool]:=autoconf
+DEPEND[libpng]:=zlib
+DEPEND[libvorbis]:=libogg
 DEPEND[mpc]:=mpfr
 DEPEND[mpfr]:=gmp
-DEPEND[texinfo]:=automake
+DEPEND[p7zip]:=libbz2
 DEPEND[sdl]:=opengl
 DEPEND[sdl2]:=opengl
+DEPEND[sdl_image]:=sdl2 libpng
+DEPEND[sdl-test]:=sdl
+DEPEND[quake]:=sdl opengl
+DEPEND[scummvm]:=sdl
+DEPEND[amimodplayer]:=sdl libvorbis
+DEPEND[texinfo]:=automake
 TOOLS:=CC=gcc CXX=g++ MAKE=make CURL=curl PATCH=patch BISON=bison FLEX=flex SVN=svn GIT=git PERL=perl GPERF=gperf YACC=yacc HELP2MAN=help2man AUTOPOINT=autopoint
 ARCHIVE_TOOLS:=GZIP=gzip BZIP2=bzip2 XZ=xz LHA=lha 7Z=7z
 ARCHIVE_TOOL_LHA:=$(shell command -v lhasa || echo lha)
@@ -145,7 +156,7 @@ debug_rules:
 	@$(call o7_CENTER,debug_rules,non-critical)
 	$(call LOG_MESSAGE,Listing rules)
 	$(foreach t,$(TARGETS),$(ECHO) $(t) rules:;$(foreach c,$($(t)_COMPONENTS),$(ECHO) $(c): $(($t)_STAMPS)/$(c)))
-	$(call STOP_o7)
+	@$(call STOP_o7)
 
 # Include platform-specific makefiles for valid platform targets
 ifneq ($(MAKECMDGOALS),$(filter help check clean debug_components debug_rules check_headers check_tools show_status,$(MAKECMDGOALS)))
@@ -184,14 +195,21 @@ $(DOWNLOAD)/%: | $(LOGS)
 	$(call FETCH_SOURCE,$(filter %=$*,$(URLS)),$(DOWNLOAD))
 	$(call STOP_o7)
 
-$(call SET_DOWNLOAD_FILES)
-
 $(DOWNLOAD)/.downloaded: $(filter $(DOWNLOAD)/%,$(DOWNLOAD_FILES)) | $(DOWNLOAD)
 	@$(TOUCH) $@
 	$(call LOG_MESSAGE,Marked $(DOWNLOAD) processed)
 
 $(call SET_DOWNLOADED_FILES)
 $(call APPLY_BUILD_RULES)
+
+# Debug download rules and files
+$(info TARGETS: $(TARGETS))
+$(info URLS: $(URLS))
+$(info DOWNLOAD_FILES: $(DOWNLOAD_FILES))
+$(info Generated Rules: $(foreach t,$(TARGETS),$($(t)_DOWNLOAD)/%:|$($(t)_DOWNLOAD)$(call FETCH_SOURCE,$(filter %=$*,$(URLS)),$($(t)_DOWNLOAD))))
+
+generate_download_rules:
+	$(call SET_DOWNLOAD_FILES)
 
 # Tool checks
 CHECK_TOOLS:=$(subst :, ,$(TOOLS) $(ARCHIVE_TOOLS)) lhasa
