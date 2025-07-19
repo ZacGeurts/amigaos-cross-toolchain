@@ -6,7 +6,7 @@
 #AI: On download failure, place file in ./download/<platform> or update platform/<platform>.mk URL
 #AI: On critical error, o7_CENTER_ERROR dumps status with "o7" salute to logs/o7_center_*.log
 # Makefile requires tabs not spaces. If the AI gives you four spaces to indent, find and replace with tab.
-# This includes all .mk files.
+# This includes all .mk files. Error looks like Makefile:XXX: *** missing separator.  Stop.
 DISPLAY_AS_LOG?=0
 ENABLE_STATIC?=0
 include defines.mk
@@ -70,11 +70,38 @@ FIRST_ERROR?=
 RECENT_ERROR?=
 LAST_MESSAGE?=
 PLATFORMS:=$(patsubst platform/%.mk,%,$(wildcard platform/*.mk))
+TARGETS:=$(PLATFORMS)
 .DEFAULT_GOAL:=help
-.PHONY: check clean debug_components debug_rules help check_headers check_tools show_status $(PLATFORMS)
+.PHONY: check clean debug_components debug_rules help check_headers check_tools show_status init_help init_build generate_download_rules $(PLATFORMS)
+
+# Cache version information in global scope
+$(foreach c,$(filter VERSIONS[%],$(.VARIABLES)),$(eval URL_$(patsubst VERSIONS[%,%,$(subst ],,$(c))):=$(value $(c))))
+
+# Lightweight initialization for help target
+init_help:
+	$(foreach t,$(TARGETS),\
+		$(eval $(t)_COMPONENTS:=$(sort $(foreach c,$(filter VERSIONS[%],$(.VARIABLES)),$(if $(filter $(t),$(word 5,$(subst =, ,$(value $(c))))),$(patsubst VERSIONS[%,%,$(subst ],,$(c))))))) \
+		$(if $($(t)_COMPONENTS),,$(call LOG_MESSAGE,Warning: No components defined for $(t) in platform/$(t).mk)))
+
+# Initialization for build targets
+init_build:
+	$(foreach t,$(TARGETS),\
+		$(eval $(t)_TARGET:=$(if $(filter ppc-amigaos m68k-amigaos,$(t)),$(subst -amigaos,,$(t))-amigaos,$(t))) \
+		$(eval $(t)_BUILD:=$(BUILD)/$(t)) \
+		$(eval $(t)_DOWNLOAD:=$(DOWNLOAD)/$(t)) \
+		$(eval $(t)_PREFIX:=$(if $(PREFIX),$(PREFIX)/$(t),$(BUILD)/install/$(t))) \
+		$(eval $(t)_STAMPS:=$(STAMPS)/$(t)) \
+		$(eval $(t)_COMPONENTS:=$(sort $(foreach c,$(filter VERSIONS[%],$(.VARIABLES)),$(if $(filter $(t),$(word 5,$(subst =, ,$(value $(c))))),$(patsubst VERSIONS[%,%,$(subst ],,$(c))))))) \
+		$(call LOG_MESSAGE,Set target vars for platform: $(t)))
+	$(foreach t,$(TARGETS),$(foreach c,$($(t)_COMPONENTS),$(if $(VERSIONS[$(c)]),,$(call LOG_ERROR,No version for '$(c)' in platform/$(t).mk))))
+	$(foreach t,$(TARGETS),$(foreach c,$($(t)_COMPONENTS),$(eval DEPEND_$(t)_$(c):=$(foreach d,$(DEPEND[$c]),$(if $(filter $(d),$($(t)_COMPONENTS)),$(d))))))
+	$(foreach t,$(TARGETS),$(eval $($(t)_DOWNLOAD)/% : | $($(t)_DOWNLOAD)\n\t$$(call o7_CENTER,download,=$$*,critical)\n\t$$(call FETCH_SOURCE,$$(filter %=$$*,$$(URLS)),$($(t)_DOWNLOAD))\n\t$$(call STOP_o7)))
+	$(foreach t,$(TARGETS),$(eval $(t)_DOWNLOAD/.downloaded : $(filter $($(t)_DOWNLOAD)/%,$(DOWNLOAD_FILES)) | $($(t)_DOWNLOAD)\n\t$$(TOUCH) $$@\n\t$$(call LOG_MESSAGE,Marked $($(t)_DOWNLOAD) processed)))
+	$(foreach t,$(TARGETS),$(foreach c,$(filter $(AUTOTOOLS_COMPONENTS),$($(t)_COMPONENTS)),$(eval $(call BUILD_AUTOTOOLS_RULE,$(t),$(c)))))
+	$(foreach t,$(TARGETS),$(foreach c,$(filter-out $(AUTOTOOLS_COMPONENTS),$($(t)_COMPONENTS)),$(eval $(call BUILD_COMPONENT,$(t),$(c)))))
 
 # Status report target
-show_status:
+show_status: init_build
 	@$(call o7_CENTER,show_status,non-critical)
 	@$(MKDIR) "$(LOGS)"
 	@$(ECHO) "[$(TIMESTAMP)] Status Report" >> "$(LOGS)/summary.log"
@@ -87,7 +114,7 @@ show_status:
 	@$(call STOP_o7)
 
 # Help target
-help:
+help: init_help
 	@$(call o7_CENTER,help,non-critical)
 	@$(MKDIR) "$(LOGS)"
 	@$(ECHO) "[$(TIMESTAMP)] Cross-Compilation Toolchain for SDL/OpenGL SDK" >> "$(LOGS)/summary.log"
@@ -99,6 +126,8 @@ help:
 	@$(ECHO) "Download Dir:   $(DOWNLOAD)"
 	@$(ECHO) "Log Dir:		$(LOGS)"
 	@$(ECHO) "Lib Type:	   $(if $(filter 1,$(ENABLE_STATIC)),Static,Shared)"
+	@$(ECHO) ""
+	@$(ECHO) "Supported Platforms:	$(PLATFORMS)"
 	@$(ECHO) ""
 	@$(ECHO) "Usage:"
 	@$(ECHO) "  make <platform>		 Build toolchain for <platform> (e.g., 'make m68k-amigaos')"
@@ -118,7 +147,7 @@ help:
 	@$(ECHO) "  Last Message:   $(if $(LAST_MESSAGE),$(LAST_MESSAGE),None)"
 	@$(ECHO) ""
 	@$(ECHO) "Notes:"
-	@$(ECHO) "  - Define components in platform/<platform>.mk"
+	@$(ECHO) "  - Define components in platform/<platform>.mk with VERSIONS[component]=version url target platform"
 	@$(ECHO) "  - Requires 2GB RAM, 2GHz CPU, 500GB disk"
 	@$(ECHO) "  - On download failure, place file in $(DOWNLOAD)/<platform> or update URL"
 	@$(ECHO) "[$(TIMESTAMP)] Help executed. Platforms: $(PLATFORMS). $(if $(filter 0,$(DISPLAY_AS_LOG)),See $(LOGS)/summary.log,Screen output)"
@@ -134,7 +163,7 @@ clean:
 	@$(call STOP_o7)
 
 # Consolidated check target
-check: check_headers
+check: init_build check_headers
 	@$(call o7_CENTER,check,critical)
 	$(call LOG_MESSAGE,Setup check done. Run 'make' or 'make <platform>')
 	@$(call STOP_o7)
@@ -142,24 +171,24 @@ check: check_headers
 # Check headers target
 check_headers:
 	@$(call o7_CENTER,check_headers,critical)
-	@if $(CC) $(TMPDIR)/check.c -o /dev/null; then $(ECHO) "[$(TIMESTAMP)] ncurses headers verified" >> "$(LOGS)/summary.log" && $(ECHO) "[$(TIMESTAMP)] ncurses headers verified"; else $(call LOG_ERROR,Missing ncurses headers. Install on $(OS_NAME): $(if $(filter Linux,$(OS)),sudo apt-get install libncurses-dev,$(if $(filter macOS,$(OS)),,$7))); fi
+	@if $(CC) $(TMPDIR)/check.c -o /dev/null; then $(ECHO) "[$(TIMESTAMP)] ncurses headers verified" >> "$(LOGS)/summary.log" && $(ECHO) "[$(TIMESTAMP)] ncurses headers verified"; else $(call LOG_ERROR,Missing ncurses headers. Install on $(OS_NAME): $(if $(filter Linux,$(OS)),sudo apt-get install libncurses-dev,$(if $(filter macOS,$(OS)),brew install libncurses,Consult your package manager for ncurses))); fi
 	@$(call STOP_o7)
 
 # Debug targets
-debug_components:
+debug_components: init_build
 	@$(call o7_CENTER,debug_components,non-critical)
 	$(call LOG_MESSAGE,Listing components)
 	$(foreach t,$(TARGETS),$(ECHO) $(t) components: $($(t)_COMPONENTS))
 	@$(call STOP_o7)
 
-debug_rules:
+debug_rules: init_build
 	@$(call o7_CENTER,debug_rules,non-critical)
 	$(call LOG_MESSAGE,Listing rules)
 	$(foreach t,$(TARGETS),$(ECHO) $(t) rules:;$(foreach c,$($(t)_COMPONENTS),$(ECHO) $(c): $(($t)_STAMPS)/$(c)))
 	@$(call STOP_o7)
 
 # Include platform-specific makefiles for valid platform targets
-ifneq ($(MAKECMDGOALS),$(filter help check clean debug_components debug_rules check_headers check_tools show_status,$(MAKECMDGOALS)))
+ifneq ($(MAKECMDGOALS),$(filter help check clean debug_components debug_rules check_headers check_tools show_status generate_download_rules,$(MAKECMDGOALS)))
 ifneq ($(filter $(PLATFORMS),$(MAKECMDGOALS)),$(MAKECMDGOALS))
 ifneq ($(MAKECMDGOALS),)
 	$(call LOG_ERROR,Invalid target: $(MAKECMDGOALS). Use 'make <platform>' where <platform> is one of: $(PLATFORMS))
@@ -167,15 +196,6 @@ endif
 endif
 include platform/$(MAKECMDGOALS).mk
 endif
-
-# Cache version information
-$(call CACHE_VERSIONS)
-
-# Set target variables
-TARGETS:=$(PLATFORMS)
-$(call SET_TARGET_VARS)
-$(call VALIDATE_COMPONENTS)
-$(call SET_DEPENDENCIES)
 
 # Define tool variables
 $(foreach t,$(TOOLS) $(ARCHIVE_TOOLS),$(eval $(word 1,$(subst =, ,$(t))) := $(word 2,$(subst =, ,$(t)))))
@@ -190,26 +210,23 @@ $(DIRS):
 URLS:=$(foreach c,$(filter VERSIONS[%],$(.VARIABLES)),$(subst VERSIONS[,,$(subst ],,$(c))=$(value $(c))))
 DOWNLOAD_FILES:=$(foreach p,$(URLS),$(call FIND_COMPONENT_FILE,$(word 1,$(subst =, ,$(p))),$(word 5,$(subst =, ,$(p)))))
 
-$(DOWNLOAD)/%: | $(LOGS)
+$(DOWNLOAD)/%: | init_build $(LOGS)
 	@$(call o7_CENTER,download,=$*,critical)
 	$(call FETCH_SOURCE,$(filter %=$*,$(URLS)),$(DOWNLOAD))
 	$(call STOP_o7)
 
-$(DOWNLOAD)/.downloaded: $(filter $(DOWNLOAD)/%,$(DOWNLOAD_FILES)) | $(DOWNLOAD)
+$(DOWNLOAD)/.downloaded: init_build $(filter $(DOWNLOAD)/%,$(DOWNLOAD_FILES)) | $(DOWNLOAD)
 	@$(TOUCH) $@
 	$(call LOG_MESSAGE,Marked $(DOWNLOAD) processed)
-
-$(call SET_DOWNLOADED_FILES)
-$(call APPLY_BUILD_RULES)
 
 # Debug download rules and files
 $(info TARGETS: $(TARGETS))
 $(info URLS: $(URLS))
 $(info DOWNLOAD_FILES: $(DOWNLOAD_FILES))
-$(info Generated Rules: $(foreach t,$(TARGETS),$($(t)_DOWNLOAD)/%:|$($(t)_DOWNLOAD)$(call FETCH_SOURCE,$(filter %=$*,$(URLS)),$($(t)_DOWNLOAD))))
+$(info Generated Rules: $(foreach t,$(TARGETS),$($(t)_DOWNLOAD)/%:|$($(t)_DOWNLOAD)\n\t$$(call o7_CENTER,download,=$$*,critical)\n\t$$(call FETCH_SOURCE,$$(filter %=$$*,$$(URLS)),$($(t)_DOWNLOAD))\n\t$$(call STOP_o7)))
 
-generate_download_rules:
-	$(call SET_DOWNLOAD_FILES)
+generate_download_rules: init_build
+	$(call SET_DOWNLOADED_FILES)
 
 # Tool checks
 CHECK_TOOLS:=$(subst :, ,$(TOOLS) $(ARCHIVE_TOOLS)) lhasa
@@ -222,7 +239,7 @@ $(TMPDIR)/check.c: | $(TMPDIR)
 	$(call LOG_MESSAGE,Created $@)
 
 # Platform build rules
-$(TARGETS): %: $(addprefix %_%/,$(%_COMPONENTS)) | check_headers
+$(TARGETS): %: init_build $(addprefix %_%/,$(%_COMPONENTS)) | check_headers
 	@$(call o7_CENTER,build_%,critical)
 	$(call LOG_MESSAGE,Built $@ toolchain)
 	$(call STOP_o7)
